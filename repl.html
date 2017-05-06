@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title>Minimized Interpreter in JavaScript</title>
+	<link rel="stylesheet" type="text/css" href="jquery.terminal.css">
+	<style type="text/css">
+	.cmdline {
+		outline: none;
+		background-color: transparent;
+		margin: 0;
+		font: inherit;
+		border: none;
+		color: inherit;
+		font-family: Georgia, serif;
+	}
+	</style>
+</head>
+
+<body>
+	<div id="cmd" class="cmd" style="width: 100%;">
+		<input id="input" class="cmdline" autofocus="autofocus" onkeydown="submit(this);">
+		<span class="cmdline">&gt;&gt;&nbsp;</span>
+	</div>
+
+	<script src="lex.js"></script>
+	<script src="parse.js"></script>
+	<script src="eval.js"></script>
+	<script src="keywords.js"></script>
+	
+	<script>
+	var submit = function (cmdLine) {
+		var e = window.event;
+		if (13 == e.keyCode) {
+			var line = document.getElementById("cmd");
+
+			var statement = cmdLine.value;
+
+			var input = document.createElement("pre");
+			input.innerHTML = ">> " + statement;
+			input.classList.add("cmd");
+			line.insertBefore(input, document.getElementById("input"));
+
+			var result = yogurt_eval(statement);
+			if (typeof result !== null) {
+				var output;
+				var outlines = result.split("\n");
+				var nlines = outlines.length;
+				for (var i = 0; i < nlines-1; ++i) {
+					output = document.createElement("pre");
+					output.innerHTML = "=> "+ outlines[i];
+					output.classList.add("cmd");
+					if (output.innerHTML)
+						line.insertBefore(output, document.getElementById("input"));
+				}
+			}
+			cmdLine.value = "";
+		}
+		return true;
+	}
+	
+	var yogurt_eval = function (input) {
+		try {
+			var tokens = yogurt_lex(input);
+			var parseTree = yogurt_parse(tokens);
+			return yogurt_evaluate(parseTree);
+		} catch (e) {
+			return e;
+		}
+	};
+
+	</script>
+</body>
+
+</html>
+
