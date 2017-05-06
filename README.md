@@ -39,24 +39,24 @@ They can be treated equivalently, i.e. a fixed point in Euclidean space.
 > f(k, b) = k * 10 + b  
 > g = x * 10 + y  
 
-The former is constrained by parameter *k* and *b*. This function can not be evaluated successfully until both are set, t. However, the latter must know *x* and *y* so as to obtain the value of *g*.  
+The former is constrained by parameter *k* and *b*. This function can not be evaluated successfully until both are set. However, the latter must know *x* and *y* so as to obtain the value of *g*.  
 Just bear in mind, functions are those that store whole procedures (as well as their environments) in memory, in which case, they are typically referred to as **closures**.
 
 ### Anything else?
 Nope. We hope you **enjoy** it!
 
-Beta 0.0
-+ Variables and functions are both first-class citizens.
 
-Beta 0.1
-+ Add control flow like *if*, *then* and *else*. Nesting is also supported.
-+ Recursion supported. **fib** works.
+### Updated History
++ Beta 0.0
+++ Variables and functions are both first-class citizens.
+
++ Beta 0.1
+++ Add control flow like *if*, *then* and *else*. Nesting is also supported.
+++ Recursion supported. **fib** works.
 
 ### Example Code
-> fib(i) = if i < 3 then 1 else fib(i-1) + fib(i-2)
-
-> sum(k) = if k < 1 then 0 else k + sum(k-1)
-
-> f(i) = if i < 10 then i else 10
-> a = if 1 < 100 then 1 else 100
+> fib(i) = if i < 3 then 1 else fib(i-1) + fib(i-2)  
+> sum(k) = if k < 1 then 0 else k + sum(k-1)  
+> f(i) = if i < 10 then i else 10  
+> a = if 1 < 100 then 1 else 100  
 
