@@ -55,7 +55,7 @@ Nope. We hope you **enjoy** it!
     + Recursion supported. **fib** works.
 
 ### Example Code
-> fib(i) = if i < 3 then 1 else fib(i-1) + fib(i-2)  
+> fib(i) = if i > 2 then fib(i-1) + fib(i-2) else 1  
 
 > sum(k) = if k < 1 then 0 else k + sum(k-1)  
 

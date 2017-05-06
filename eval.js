@@ -9,7 +9,7 @@ function yogurt_evaluate(parse_tree)
         "-": function(a, b) { return "undefined" === typeof b ? -a : a - b; },
         "*": function(a, b) { return a * b; },
         "/": function(a, b) { return a / b; },
-        
+
         ">": function(a, b) { return a > b; },
         "<": function(a, b) { return a < b; },
         ">=": function(a, b) { return a >= b; },
@@ -30,9 +30,9 @@ function yogurt_evaluate(parse_tree)
         for (child in root)
             _apply(root[child], param, argum);
     }
-    
+
     function dupProc(proc) { return JSON.parse(JSON.stringify(proc)); }
-    
+
     function parseTree(root)
     {
         if ("num" === root.node) {
@@ -53,7 +53,7 @@ function yogurt_evaluate(parse_tree)
 
             var arg;
             var _proc = dupProc(functions[root.name].proc);
-            
+
             for (var i = 0; i < root.args.length; ++i) {
                 arg = parseTree(root.args[i]);
                 _apply(_proc, functions[root.name].args[i].value, arg);

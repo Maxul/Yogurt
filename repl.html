@@ -42,14 +42,14 @@
 			input.classList.add("cmd");
 			line.insertBefore(input, document.getElementById("input"));
 
-			var result = yogurt_eval(statement);
+			var result = "=> " + yogurt_eval(statement.trim());
 			if (typeof result !== null) {
 				var output;
 				var outlines = result.split("\n");
 				var nlines = outlines.length;
-				for (var i = 0; i < nlines-1; ++i) {
+				for (var i = 0; i < nlines; ++i) {
 					output = document.createElement("pre");
-					output.innerHTML = "=> "+ outlines[i];
+					output.innerHTML = outlines[i];
 					output.classList.add("cmd");
 					if (output.innerHTML)
 						line.insertBefore(output, document.getElementById("input"));

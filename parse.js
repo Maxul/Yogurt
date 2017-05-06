@@ -167,7 +167,7 @@ function yogurt_parse(token_list)
         throw "Invalid lvalue.";
     });
 
-    //console.log( JSON.stringify(token_list) );
+    console.log( JSON.stringify(token_list) );
     var parse_tree = [];
     while ("EOF" !== dupCurToken().node)
         parse_tree.push(expr(0));
