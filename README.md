@@ -48,11 +48,11 @@ Nope. We hope you **enjoy** it!
 
 ### Updated History
 + Beta 0.0
-        - Variables and functions are both first-class citizens.
+    + Variables and functions are both first-class citizens.
 
 + Beta 0.1
-        - Add control flow like *if*, *then* and *else*. Nesting is also supported.
-        - Recursion supported. **fib** works.
+    + Add control flow like *if*, *then* and *else*. Nesting is also supported.
+    + Recursion supported. **fib** works.
 
 ### Example Code
 > fib(i) = if i < 3 then 1 else fib(i-1) + fib(i-2)  
