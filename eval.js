@@ -48,6 +48,12 @@ function yogurt_evaluate(parse_tree)
             return variables[root.name] = parseTree(root.value);
         }
         else if ("call" === root.node) {
+            if ("function" === typeof built_in_functions[root.name]) {
+                for (var i = 0; i < root.args.length; ++i)
+                    root.args[i] = parseTree(root.args[i]);
+                return built_in_functions[root.name].apply(null, root.args);
+            }
+
             if ("undefined" === typeof functions[root.name])
                 throw "Function \"" + root.name + "\" is undefined";
 

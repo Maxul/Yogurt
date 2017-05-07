@@ -3,26 +3,21 @@
  */
 function yogurt_parse(token_list)
 {
-    var curIndex = 0;
     var tokTable = {};
-    
+
     // duplicate one from token list, deep cloning
     function dupCurToken()
     {
-        var tok = token_list[curIndex];
+        var tok = token_list[0];
 
-        var newTok = Object.create(tokTable[tok.node]);
+        var newTok = Object.create(tokTable[tok.node]); // nud, lbp, led
         newTok.node = tok.node;
         newTok.value = tok.value;
         return newTok;
     }
 
-    function getNextToken()
-    {
-        curIndex++;
-        return dupCurToken();
-    }
-    
+    function getNextToken() { return token_list.shift(); }
+
     /*
      * Top-down operator precedence parsing
      * LR(1): shift-reduce
@@ -68,34 +63,27 @@ function yogurt_parse(token_list)
 
     setPrecedence("if", function() {
         var cond = expr(0);
-        if ("then" !== dupCurToken().node)
+        if ("then" !== token_list[0].node)
             throw "Expected 'then' clause.";
         getNextToken(); // eat "then"
-        
+
         var conseq = expr(0);
-        if ("else" !== dupCurToken().node)
+        if ("else" !== token_list[0].node)
             /*throw "Expected 'else' clause.";*/
             return {"node": "branch", "cond": cond, "conseq": conseq};
         getNextToken(); // eat "else"
 
         var alt = expr(0);
-        var ret = {"node": "branch", "cond": cond, "conseq": conseq, "alt": alt};
-        //console.log(ret);
-        return ret;
+        return {"node": "branch", "cond": cond, "conseq": conseq, "alt": alt};
     });
-
-    setPrecedence("then", function() {
-        return "then";
-    });
-    setPrecedence("else", function() {
-        return "else";
-    });
+    setPrecedence("then");
+    setPrecedence("else");
 
     setPrecedence("EOF");
     setPrecedence("(", function() {
         var v = expr(2);
-        
-        if (")" !== dupCurToken().node)
+
+        if (")" !== token_list[0].node)
             throw "Expected closing parenthesis ')'";
         getNextToken(); // eat ")"
         return v;
@@ -104,20 +92,20 @@ function yogurt_parse(token_list)
     setPrecedence(",");
     setPrecedence("num", function(n) { return n; });
     setPrecedence("id", function(name) {
-        if ("(" !== dupCurToken().node)
+        if ("(" !== token_list[0].node)
             return name; // variable reference
 
         // function call
         var args = [];
 
-        if (")" === token_list[curIndex + 1].node)
+        if (")" === token_list[1].node)
             getNextToken(); // eat ")" since no args
         else {
             do {
                 getNextToken(); // eat "(" and ","
                 args.push(expr(2));
-            } while ("," === dupCurToken().node);
-            if (")" !== dupCurToken().node)
+            } while ("," === token_list[0].node);
+            if (")" !== token_list[0].node)
                 throw "Expected closing parenthesis ')'";
         }
         getNextToken(); // move to new token ready to go
@@ -128,7 +116,7 @@ function yogurt_parse(token_list)
     function prefix(id, rbp)
     {
         setPrecedence(id, function() {
-           return {node: id, rhs: expr(rbp)}; 
+           return {node: id, rhs: expr(rbp)};
         });
     }
     function infix(id, lbp, rbp, led)
@@ -155,7 +143,7 @@ function yogurt_parse(token_list)
     infix("=", 1, 2, function(lhs) {
         // assignment to identifier
         if ("id" === lhs.node) {
-            return {node: "assign", name: lhs.value, value: expr(2)};
+            return {node: "assign", name: lhs.value, value: expr(0)};
         }
         if ("call" === lhs.node) {
             // check whether each arg is valid
@@ -169,7 +157,7 @@ function yogurt_parse(token_list)
 
     console.log( JSON.stringify(token_list) );
     var parse_tree = [];
-    while ("EOF" !== dupCurToken().node)
+    while ("EOF" !== token_list[0].node)
         parse_tree.push(expr(0));
     //console.log ( parse_tree.length );
     console.log( JSON.stringify( parse_tree ) );

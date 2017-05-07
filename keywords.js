@@ -35,8 +35,10 @@ var variables = {
     e: Math.E,
 };
 
-var functions = {
-    /*sin: Math.sin,
+var functions = {};
+
+var built_in_functions = {
+    sin: Math.sin,
     cos: Math.cos,
     tan: Math.tan,
 
@@ -51,6 +53,6 @@ var functions = {
     sqrt: Math.sqrt,
 
     max: Math.max,
-    min: Math.min,*/
+    min: Math.min,
 };
 

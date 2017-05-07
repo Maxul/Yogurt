@@ -93,7 +93,7 @@ function yogurt_lex(input)
     }
     
     addToken({node: "EOF"});           /* no more tokens */
-    console.log( JSON.stringify(token_list) );
+    //console.log( JSON.stringify(token_list) );
     return token_list;
 }
 
