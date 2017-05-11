@@ -1,0 +1,54 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Minimized Interpreter in JavaScript</title>
+    <script src="js/jquery-1.7.1.min.js"></script>
+    <script src="js/jquery.mousewheel-min.js"></script>
+    <script src="js/jquery.terminal.min.js"></script>
+
+    <script src="lex.js"></script>
+    <script src="parse.js"></script>
+    <script src="eval.js"></script>
+    <script src="keywords.js"></script>
+    <script src="scope.js"></script>
+    <script src="memo.js"></script>
+
+    <link href="css/jquery.terminal.css" rel="stylesheet"/>
+</head>
+
+<body>
+<script>
+$(function() {
+    $('body').terminal(function(command, term) {
+        term.push(function(command, term) {
+            try {
+                console.time("ticks");
+
+                var input_stream = command.trim();
+                var token_list = tequila_lex(input_stream);
+                var parse_tree = tequila_parse(token_list);
+                var result = tequila_evaluate(parse_tree);
+console.log(JSON.stringify(result));
+                var tmp;
+                while (tmp = result.shift())
+                    if ("undefined" !== tmp)
+                        term.echo("=> " + String(tmp));
+
+                console.timeEnd("ticks");
+            } catch (err) {
+                term.error(String(err));
+            }
+        }, {
+            greetings: 'Javascript Interpreter',
+            name: "Yogurt",
+            prompt: ">> ",
+            });
+    });
+});
+
+</script>
+</body>
+
+</html>

@@ -6,33 +6,23 @@ var keywords = [
     "while",
     "for",
     "in",
+
+    "not",
+    "and",
+    "or",
 ];
 
-var operators = [
-    "==",
-    "!=",
-    "<=",
-    ">=",
-    
-    "(",
-    ")",
-    ",",
-    
-    "=",
-    
-    "+",
-    "-",
-    "*",
-    "/",
-    
-    "<",
-    ">",
+var procedures = {};
 
-];
+var suffix_ops = "<>=!:";
+var brackets = "()[]{}";
 
 var variables = {
     pi: Math.PI,
     e: Math.E,
+    true: true,
+    false: false,
+    null: null,
 };
 
 var functions = {};

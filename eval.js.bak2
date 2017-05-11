@@ -26,37 +26,60 @@ function tequila_evaluate(parse_tree)
         },
     };
 
-    function _reduce(root, param, argum)
+    ////////// function return value memory database //////////
+    function makeMemoString(args)
     {
-        if ("object" !== typeof root)
-            return null;
+        var ret = "";
 
-        if ("id" === root.node && param === root.value) {
-            root.node = "num";
-            root.value = argum;
-        }
-        for (child in root)
-            _reduce(root[child], param, argum);
+        for (i in args)
+            ret += String(args[i]) + ' ';
+        return ret;
     }
 
-    function parseTree(root)
+    function getMemoValue(func, args)
+    {
+        var key = makeMemoString(args);
+        if (memoization[func])
+            return memoization[func][key];
+        return undefined;
+    }
+
+    function setMemoValue(func, args, val)
+    {
+        if ("undefined" === typeof memoization[func])
+            memoization[func] = [];
+
+        var key = makeMemoString(args);
+        memoization[func][key] = val;
+    }
+
+    function clearMemoRow(func)
+    {
+        if ("undefined" !== typeof memoization[func])
+            memoization[func] = [];
+    }
+    ////////// function return value memory database //////////
+
+    function dupObject(o) { return JSON.parse(JSON.stringify(o)); }
+
+    function parseTree(root, env)
     {
         if ("num" === root.node) {
             return root.value;
         }
         else if (ops[root.node]) {
             if (root.lhs)
-                return ops[root.node](parseTree(root.lhs), parseTree(root.rhs));
+                return ops[root.node](parseTree(root.lhs, env), parseTree(root.rhs, env));
             else
-                return ops[root.node](parseTree(root.rhs));
+                return ops[root.node](parseTree(root.rhs, env));
         }
         else if ("assign" === root.node) {
-            return tequila_scope.locals()[root.name] = parseTree(root.value);
+            return env[root.name] = parseTree(root.value, env);
         }
         else if ("call" === root.node) {
             if ("function" === typeof built_in_functions[root.name]) {
                 for (var i = 0; i < root.args.length; ++i)
-                    root.args[i] = parseTree(root.args[i]);
+                    root.args[i] = parseTree(root.args[i], env);
                 return built_in_functions[root.name].apply(null, root.args);
             }
 
@@ -65,42 +88,41 @@ function tequila_evaluate(parse_tree)
 
             var arg;
             var _args = [];
-            var _proc = dupObject(functions[root.name].proc);
+            var _env = dupObject(env);
 
             for (var i = 0; i < root.args.length; ++i) {
-                arg = parseTree(root.args[i]);
+                arg = parseTree(root.args[i], env);
                 _args.push(arg);
-                _reduce(_proc, functions[root.name].args[i].value, arg);
+                _env[functions[root.name].args[i].value] = arg;
             }
 
             // accelerate with memoization
-            var ret = Memo.getMemoValue(root.name, _args);
+            var ret = getMemoValue(root.name, _args);
             if ("undefined" !== typeof ret)
                 return ret;
 
-            ret = parseTree(_proc);
-            Memo.setMemoValue(root.name, _args, ret);
+            ret = parseTree(functions[root.name].proc, _env);
+            setMemoValue(root.name, _args, ret);
             return ret;
         }
         else if ("def" === root.node) {
             // register a new function
-            Memo.clearMemoRow(root.name);
+            clearMemoRow(root.name);
             functions[root.name] = {"args": root.args, "proc": root.value};
         }
         else if ("id" === root.node) {
             var proc = procedures[root.value];
-            
             if ("object" === typeof proc) {
                 proc = dupObject(proc);
-                console.log(JSON.stringify(proc));
-                //var tree = tequila_parse(proc);
+                //console.log(JSON.stringify(proc));
+                var tree = tequila_parse(proc);
                 //console.log(JSON.stringify(tree));
-                var rest = tequila_evaluate(proc);
-                console.log(rest);
+                var rest = tequila_evaluate(tree);
+                //console.log(rest);
                 return rest;
             }
 
-            var val = tequila_scope.locals()[root.value];
+            var val = env[root.value];
 
             if ("undefined" === typeof val)
                 throw "Variable \"" + root.value + "\" is undefined!!!";
@@ -110,35 +132,25 @@ function tequila_evaluate(parse_tree)
 
         }
         else if ("branch" == root.node) {
-            var c = parseTree(root.cond);
+            var c = parseTree(root.cond, env);
 
             if ("boolean" !== typeof c)
                 throw "Expected a boolean expression.";
             if (c)
-                return parseTree(root.conseq);
+                return parseTree(root.conseq, env);
             else
                 if (root.alt)
-                    return parseTree(root.alt);
+                    return parseTree(root.alt, env);
         }
-        else if ("block" === root.node) {
-            var ss = root.stmts;
-            
-            tequila_scope.push();   // enter block
-            for (var i = 0; i < ss.length; ++i)
-                output.push(String(parseTree(ss[i])));
-            tequila_scope.pop();    // leave block
-            //var ret = tequila_evaluate(root.stmts);
-            //console.log(output);
-            return;
-        }
-        return "nil";
+        return null;
     }
 
     // main process of evaluating parse node
     var output = [];
 
     for (var i = 0; i < parse_tree.length; ++i)
-        output.push( String(parseTree(parse_tree[i])) );
+        output.push( String(parseTree(parse_tree[i], variables)) );
+    //console.log(output);
     return output;
 }
 

@@ -1,7 +1,7 @@
 /*
  * lexer: tokenize input stream into lexemes list
  */
-function yogurt_lex(input)
+function tequila_lex(input)
 {
     var token_list = [];
     var index = 0;
@@ -11,50 +11,37 @@ function yogurt_lex(input)
     // private methods using RE
     function isSpace(c) { return /\s/.test(c); }
     function isDigit(c) { return /[\d\.]/.test(c); }
-    function isOp(c) { return /[\+\-\*\/\(\)\,\=\<\>\!]/.test(c); }
+    function isOp(c) { return /[\+\-\*\/\(\)\,\=\<\>\!\:\;\[\]\{\}]/.test(c); }
     function isId(c) { return "string" === typeof c && !isOp(c) && !isSpace(c); }
 
     // read a character once from stream buffer
     function advance() { return ch = input[++index]; }
-
-    function addToken(token) { token_list.push(token); }
-
-    function isKeyWord(token)
-    {
-        //for (var i = 0; i < keywords.length; ++i)
-        for (i in keywords)
-            if (token === keywords[i])
-                return true;
-        return false;
-    }
-
-    function isOperator(op)
-    {
-        for (i in operators)
-            if (op === operators[i]);
-                return true;
-        return false;
-    }
+    function addToken(t) { token_list.push(t); }
+    function isKeyWord(t) { return keywords.indexOf(t) >= 0; }
 
     function getToken()
     {
         if (index >= input.length)
             return null;
-
-        // getChar()
-        ch = input[index];
-
-        // skip all whitespaces
-        while (isSpace(ch))
+        
+        ch = input[index];      // getChar()
+        while (isSpace(ch))     // skip all whitespaces
             ch = advance();
         
         if (isOp(ch)) {
-            //var ret = {node: ch};
             var ret = ch;
+            var t = ch;
             
-//            while (isOp(advance(ch)))
-//                ret += ch;
             advance();
+            if (brackets.indexOf(t) >= 0)
+                return {node: ret};
+            for (;;) {
+                t = input[index];
+                if (suffix_ops.indexOf(t) < 0)
+                    break;
+                ret += t;
+                advance();
+            }
             return {node: ret};
         }
         
@@ -84,16 +71,11 @@ function yogurt_lex(input)
         throw "Unrecognized token.";
     }
 
-    while (1) {
-        var token = getToken();
-        //console.log( JSON.stringify(token) );
-        if (null === token)
-            break;
+    while (token = getToken())
         addToken(token);
-    }
     
     addToken({node: "EOF"});           /* no more tokens */
-    //console.log( JSON.stringify(token_list) );
+    console.log( JSON.stringify(token_list) );
     return token_list;
 }
 
