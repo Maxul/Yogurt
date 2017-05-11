@@ -1,11 +1,11 @@
 # *Tequila* - Primary Functional Programming Interpreter
  _____                    _  _        
-|_   _|___   __ _  _   _ (_)| |  __ _ 
-  | | / _ \ / _` || | | || || | / _` |
-  | ||  __/| (_| || |_| || || || (_| |
-  |_| \___| \__, | \__,_||_||_| \__,_|
-               |_|                    
-
+|_   _|___   __ _  _   _ (_)| |  __ _   
+  | | / _ \ / _` || | | || || | / _` |  
+  | ||  __/| (_| || |_| || || || (_| |  
+  |_| \___| \__, | \__,_||_||_| \__,_|  
+               |_|                        
+  
 
 ### Does it support branches or loops like "*if*" "*while*" "*for*", etc?
 Sorry, not fully supported yet. Thus *Tequila* is still not **turing-complete**.
@@ -81,34 +81,34 @@ Nope. We hope you **enjoy** it!
 > a = if 1 <= 100 then 1 else 100  
 
 ### Guide Book
->> a = 12
-=> 12
+\>\> a = 12
+\=\> 12
 
->> a
-=> 12
+\>\> a
+\=\> 12
 
->> a = b = 10 * (1 - 12)
-=> -110
+\>\> a = b = 10 * (1 - 12)
+\=\> -110
 
->> b
-=> -110
+\>\> b
+\=\> -110
 
->> sum(k) = if k < 1 then 0 else k + sum(k-1)  
-=> null
+\>\> sum(k) = if k < 1 then 0 else k + sum(k-1)  
+\=\> null
 
->> sum(1000)
-=> 500500
+\>\> sum(1000)
+\=\> 500500
 
->> proc := { a = 10; b = 12; a + b; }
-=> null
+\>\> proc := { a = 10; b = 12; a + b; }
+\=\> null
 
->> proc()
-=> 22
+\>\> proc()
+\=\> 22
 
->> a = 100
-=> 100
->> { a = 10 }
-=> 10
->> a
-=> 100
+\>\> a = 100
+\=\> 100
+\>\> { a = 10 }
+\=\> 10
+\>\> a
+\=\> 100
 
