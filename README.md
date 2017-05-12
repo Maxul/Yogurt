@@ -1,11 +1,11 @@
 # *Tequila* - Primary Functional Programming Interpreter
- _____                    _  _        
-|_   _|___   __ _  _   _ (_)| |  __ _   
-  | | / _ \ / _` || | | || || | / _` |  
-  | ||  __/| (_| || |_| || || || (_| |  
-  |_| \___| \__, | \__,_||_||_| \__,_|  
-               |_|                        
-  
+>  _____                    _  _        
+> |_   _|___   __ _  _   _ (_)| |  __ _   
+>   | | / _ \ / _` || | | || || | / _` |  
+>   | ||  __/| (_| || |_| || || || (_| |  
+>   |_| \___| \__, | \__,_||_||_| \__,_|  
+>                |_|                      
+>   
 
 ### Does it support branches or loops like "*if*" "*while*" "*for*", etc?
 Sorry, not fully supported yet. Thus *Tequila* is still not **turing-complete**.
@@ -71,6 +71,8 @@ Nope. We hope you **enjoy** it!
 + Beta 0.3
     + Add support for memoization for heavy computation of recursion.
     + Add support for lexical scope, which introduces the conception of local binding.
+    + Merge both variables and functions into the block scope.
+    + Multiple expressions after being evaluated only return the last one.
 
 ### Example Code
 > fib(i) = if i > 2 then fib(i-1) + fib(i-2) else 1  
@@ -81,8 +83,8 @@ Nope. We hope you **enjoy** it!
 > a = if 1 <= 100 then 1 else 100  
 
 ### Guide Book
-\>\> a = 12
-\=\> 12
+> \>\> a = 12  
+> \=\> 12
 
 \>\> a
 \=\> 12

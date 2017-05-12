@@ -35,6 +35,7 @@ function tequila_lex(input)
             advance();
             if (brackets.indexOf(t) >= 0)
                 return {node: ret};
+            // compound operator
             for (;;) {
                 t = input[index];
                 if (suffix_ops.indexOf(t) < 0)
@@ -63,6 +64,7 @@ function tequila_lex(input)
             while (isId(advance()))
                 id += ch;
 
+            // keywords is prior to user defined identifiers
             if (isKeyWord(id))
                 return {node: id};
             return {node: "id", value: id};

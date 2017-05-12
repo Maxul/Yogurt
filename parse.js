@@ -3,9 +3,11 @@
  */
 function tequila_parse(token_list)
 {
-    var tokTable = {};
+    var tokTable = {};      // ready to get referenced for all possible symbols
 
-    // duplicate one from token list, deep cloning; set callbacks
+    function getNextToken() { return token_list.shift(); }
+    
+    // duplicate one from token list, deep cloning and register callbacks
     function dupCurToken()
     {
         var tok = token_list[0];
@@ -18,8 +20,6 @@ function tequila_parse(token_list)
         newTok.value = tok.value;
         return newTok;
     }
-
-    function getNextToken() { return token_list.shift(); }
 
     /*
      * Top-down operator precedence parsing
@@ -83,7 +83,7 @@ function tequila_parse(token_list)
     makeSymbol("then");
     makeSymbol("else");
     
-    makeSymbol("EOF");
+
     makeSymbol("(", function() {
         var e = expr(0);
 
@@ -130,7 +130,8 @@ function tequila_parse(token_list)
         getNextToken(); // move to new token ready to go
         return {node: "call", args: args, name: name.value};
     });
-
+    makeSymbol("EOF");
+    
     // wrappers
     function prefix(id, rbp)
     {

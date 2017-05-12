@@ -1,8 +1,6 @@
-function dupObject(o) { return JSON.parse(JSON.stringify(o)); }
+var Scope = {
 
-var tequila_scope = {
-    
-    env_stack: [variables],
+    env_stack: [{}],
     depth: 0,
 
     push: function() {
@@ -17,7 +15,8 @@ var tequila_scope = {
         this.depth -= 1;
     },
 
-    locals: function() {
+    env: function() {
         return this.env_stack[this.depth];
     },
+
 };
