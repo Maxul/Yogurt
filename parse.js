@@ -1,19 +1,19 @@
+// parse.js
+
 /*
  * parser: construct a parse tree according to token list
  */
-function tequila_parse(token_list)
-{
+function tequila_parse(token_list) {
     var tokTable = {};      // ready to get referenced for all possible symbols
 
     function getNextToken() { return token_list.shift(); }
-    
+
     // duplicate one from token list, deep cloning and register callbacks
-    function dupCurToken()
-    {
+    function dupCurToken() {
         var tok = token_list[0];
 
         if (!tokTable[tok.node]) {
-             throw "Unrecognised token \"" + tok.node + "\"";
+            throw "Unrecognised token \"" + tok.node + "\"";
         }
         var newTok = Object.create(tokTable[tok.node]); // nud, lbp, led
         newTok.node = tok.node;
@@ -27,8 +27,7 @@ function tequila_parse(token_list)
      *
      * @param rbp   right binding power
      */
-    function expr(rbp)
-    {
+    function expr(rbp) {
         var tok = dupCurToken();
 
         if (!tok.nud)
@@ -54,18 +53,17 @@ function tequila_parse(token_list)
      * @param nud Null denotative
      * @param led Left denotative
      */
-    function makeSymbol(id, nud, lbp, led)
-    {
+    function makeSymbol(id, nud, lbp, led) {
         // register symbol table
-		var tok = tokTable[id] || {};
-		tokTable[id] = {
-		    nud: tok.nud || nud,
-			lbp: tok.lbp || lbp,
-			led: tok.led || led,
-		};
+        var tok = tokTable[id] || {};
+        tokTable[id] = {
+            nud: tok.nud || nud,
+            lbp: tok.lbp || lbp,
+            led: tok.led || led,
+        };
     }
 
-    makeSymbol("if", function() {
+    makeSymbol("if", function () {
         var cond = expr(0);
         if ("then" !== token_list[0].node)
             throw "Expected 'then' clause";
@@ -74,17 +72,17 @@ function tequila_parse(token_list)
         var conseq = expr(0);
         if ("else" !== token_list[0].node)
             /*throw "Expected 'else' clause";*/
-            return {"node": "branch", "cond": cond, "conseq": conseq};
+            return { "node": "branch", "cond": cond, "conseq": conseq };
         getNextToken(); // eat "else"
 
         var alt = expr(0);
-        return {"node": "branch", "cond": cond, "conseq": conseq, "alt": alt};
+        return { "node": "branch", "cond": cond, "conseq": conseq, "alt": alt };
     });
     makeSymbol("then");
     makeSymbol("else");
-    
 
-    makeSymbol("(", function() {
+
+    makeSymbol("(", function () {
         var e = expr(0);
 
         if (")" !== token_list[0].node)
@@ -94,24 +92,24 @@ function tequila_parse(token_list)
     });
     makeSymbol(")");
     makeSymbol(",");
-    makeSymbol('{', function() {
+    makeSymbol('{', function () {
         var statements = [];
 
         if ("}" !== token_list[0].node) {
             do
                 statements.push(expr(0));
             while ("}" !== token_list[0].node);
-            
+
             if ("}" !== token_list[0].node)
                 throw "Unreachable statement";
         }
         getNextToken();     // eat "}"
         //console.log(JSON.stringify(statements));
-        return {node: "block", stmts: statements};
+        return { node: "block", stmts: statements };
     });
     makeSymbol('}');
-    makeSymbol("num", function(n) { return n; });
-    makeSymbol("id", function(name) {
+    makeSymbol("num", function (n) { return n; });
+    makeSymbol("id", function (name) {
         if ("(" !== token_list[0].node) // variable reference
             return name;
 
@@ -128,60 +126,58 @@ function tequila_parse(token_list)
                 throw "Expected closing parenthesis ')'";
         }
         getNextToken(); // move to new token ready to go
-        return {node: "call", args: args, name: name.value};
+        return { node: "call", args: args, name: name.value };
     });
     makeSymbol("EOF");
-    
+
     // wrappers
-    function prefix(id, rbp)
-    {
-        makeSymbol(id, function() {
-           return {node: id, rhs: expr(rbp)};
+    function prefix(id, rbp) {
+        makeSymbol(id, function () {
+            return { node: id, rhs: expr(rbp) };
         });
     }
-    function infix(id, lbp, rbp, led)
-    {
+    function infix(id, lbp, rbp, led) {
         rbp = rbp || lbp;
-        makeSymbol(id, null, lbp, led || function(lhs) {
-            return {node: id, lhs: lhs, rhs: expr(rbp)};
+        makeSymbol(id, null, lbp, led || function (lhs) {
+            return { node: id, lhs: lhs, rhs: expr(rbp) };
         });
     }
 
     // install standard operators and set precedence, 1 is the lowest
     prefix("+", 7);
     prefix("-", 7);
-    
+
     infix("*", 6);
     infix("/", 6);
     infix("+", 5);
     infix("-", 5);
-    
+
     infix("<", 4);
     infix(">", 4);
     infix("<=", 4);
     infix(">=", 4);
     infix("==", 4);
     infix("!=", 4);
-    
+
     prefix("not", 3);
     infix("and", 3);
     infix("or", 3);
-    
-    infix("=", 1, 2, function(lhs) {
+
+    infix("=", 1, 2, function (lhs) {
         // assignment to identifier
         if ("id" === lhs.node) {
-            return {node: "assign", name: lhs.value, value: expr(0)};
+            return { node: "assign", name: lhs.value, value: expr(0) };
         }
         if ("call" === lhs.node) {
             // check whether each arg is valid
             for (var i = 0; i < lhs.args.length; ++i)
                 if ("id" !== lhs.args[i].node)
                     throw "Invalid argument name";
-            return {node: "def", name: lhs.name, args: lhs.args, value: expr(0)};
+            return { node: "def", name: lhs.name, args: lhs.args, value: expr(0) };
         }
         throw "Invalid lvalue.";
     });
-    infix(":=", 1, 2, function(lhs) {
+    infix(":=", 1, 2, function (lhs) {
         var t;
         var statement = [];
 
@@ -197,36 +193,14 @@ function tequila_parse(token_list)
         }
         //statement.push({node: "EOF"});
         procedures[String(lhs.value)] = statement;
-        return {node: "proc", name: lhs.value};
+        return { node: "proc", name: lhs.value };
     });
-    /*
-        infix(":=", 1, 2, function(lhs) {
-        var t;
-        var statement = [];
-
-        if ("id" === lhs.node) {
-            if ("{" !== token_list[0].node)
-                throw "Expected opening block '{'";
-            getNextToken(); // eat "{"
-            while ("}" !== token_list[0].node) {
-                statement.push(token_list[0]);
-                getNextToken();
-            }
-            getNextToken();
-        }
-        statement.push({node: "EOF"});
-        procedures[String(lhs.value)] = statement;
-        return {node: "proc", name: lhs.value};
-    });
-    */
-
     //console.log( JSON.stringify(token_list) );
     var parse_tree = [];
-    
+
     while ("EOF" !== token_list[0].node)
         parse_tree.push(expr(0));
     //console.log ( parse_tree.length );
-    console.log( JSON.stringify( parse_tree ) );
+    console.log(JSON.stringify(parse_tree));
     return parse_tree;
 }
-

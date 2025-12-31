@@ -1,33 +1,33 @@
+// eval.js
+
 /*
  * evaluate: iterate each parse node and do syntax analysis
  */
-function tequila_evaluate(parse_tree)
-{
+function tequila_evaluate(parse_tree) {
     var ops = {
         // take the place of LHS with RHS when only RHS exists
-        "+": function(a, b) { return "undefined" === typeof b ? +a : a + b; },
-        "-": function(a, b) { return "undefined" === typeof b ? -a : a - b; },
-        "*": function(a, b) { return a * b; },
-        "/": function(a, b) { return a / b; },
+        "+": function (a, b) { return "undefined" === typeof b ? +a : a + b; },
+        "-": function (a, b) { return "undefined" === typeof b ? -a : a - b; },
+        "*": function (a, b) { return a * b; },
+        "/": function (a, b) { return a / b; },
 
-        ">": function(a, b) { return a > b; },
-        "<": function(a, b) { return a < b; },
-        ">=": function(a, b) { return a >= b; },
-        "<=": function(a, b) { return a <= b; },
-        "==": function(a, b) { return a == b; },
-        "!=": function(a, b) { return a != b; },
+        ">": function (a, b) { return a > b; },
+        "<": function (a, b) { return a < b; },
+        ">=": function (a, b) { return a >= b; },
+        "<=": function (a, b) { return a <= b; },
+        "==": function (a, b) { return a == b; },
+        "!=": function (a, b) { return a != b; },
 
-        "not": function(a) { return "boolean" === typeof a ? !a : null; },
-        "and": function(a, b) {
+        "not": function (a) { return "boolean" === typeof a ? !a : null; },
+        "and": function (a, b) {
             return "boolean" === typeof a && "boolean" === typeof b ? a && b : null;
         },
-        "or": function(a, b) {
+        "or": function (a, b) {
             return "boolean" === typeof a && "boolean" === typeof b ? a || b : null;
         },
     };
 
-    function _reduce(root, param, argum)
-    {
+    function _reduce(root, param, argum) {
         if ("object" !== typeof root)
             return null;
 
@@ -39,8 +39,7 @@ function tequila_evaluate(parse_tree)
             _reduce(root[child], param, argum);
     }
 
-    function parseTree(root)
-    {
+    function parseTree(root) {
         if ("num" === root.node) {
             return root.value;
         }
@@ -82,9 +81,9 @@ function tequila_evaluate(parse_tree)
         }
         else if ("def" === root.node) {
             // clear previous definition
-            //Memo.clearMemoRow(root.name);
+            Memo.clearMemoRow(root.name);
             // push a definition bound to a prototype into environment
-            Scope.env()[root.name] = {"args": root.args, "defun": root.value};
+            Scope.env()[root.name] = { "args": root.args, "defun": root.value };
         }
         else if ("call" === root.node) {
             // is it a function provided by us?
@@ -108,12 +107,12 @@ function tequila_evaluate(parse_tree)
             }
 
             // accelerate with memoization
-            /*var ret = Memo.getMemoValue(root.name, _args);
+            var ret = Memo.getMemoValue(root.name, _args);
             if ("undefined" !== typeof ret)
-                return ret;*/
+                return ret;
 
             ret = parseTree(_proc);
-            //Memo.setMemoValue(root.name, _args, ret);
+            Memo.setMemoValue(root.name, _args, ret);
             return ret;
         }
         else if ("branch" == root.node) {
@@ -144,7 +143,6 @@ function tequila_evaluate(parse_tree)
     var output = [];
 
     for (var i = 0; i < parse_tree.length; ++i)
-        output.push( String(parseTree(parse_tree[i])) );
+        output.push(String(parseTree(parse_tree[i])));
     return output;
 }
-
