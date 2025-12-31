@@ -103,43 +103,6 @@
 
         };
 
-        // memo.js
-
-        ////////// function return value memory database //////////
-        var Memo = {
-
-            // [ {func: name, args: [], ret: value}, ... ]
-            memoization: [],
-
-            makeMemoString: function (args) {
-                var ret = "";
-
-                for (i in args)
-                    ret += String(args[i]) + ' ';
-                return ret;
-            },
-
-            getMemoValue: function (func, args) {
-                var key = this.makeMemoString(args);
-                if (this.memoization[func])
-                    return this.memoization[func][key];
-                return undefined;
-            },
-
-            setMemoValue: function (func, args, val) {
-                if ("undefined" === typeof this.memoization[func])
-                    this.memoization[func] = [];
-
-                var key = this.makeMemoString(args);
-                this.memoization[func][key] = val;
-            },
-
-            clearMemoRow: function (func) {
-                if ("undefined" !== typeof this.memoization[func])
-                    this.memoization[func] = [];
-            },
-        };
-
         // lex.js
 
         /*
@@ -191,8 +154,11 @@
                 if (isDigit(ch)) {
                     var num = ch;
 
-                    while (isDigit(advance(ch)))
+                    while (index + 1 < input.length && isDigit(input[index + 1])) {
+                        advance();
                         num += ch;
+                    }
+
                     num = parseFloat(num);
                     if (!isFinite(num))
                         throw "Number is too large or too small for a 64-bit floating-point.";
@@ -215,6 +181,7 @@
                 throw "Unrecognized token.";
             }
 
+            var token;
             while (token = getToken())
                 addToken(token);
 
@@ -467,7 +434,7 @@
                     root.node = "num";
                     root.value = argum;
                 }
-                for (child in root)
+                for (var child in root)
                     _reduce(root[child], param, argum);
             }
 
@@ -512,8 +479,6 @@
                     return Scope.env()[root.name] = parseTree(root.value);
                 }
                 else if ("def" === root.node) {
-                    // clear previous definition
-                    Memo.clearMemoRow(root.name);
                     // push a definition bound to a prototype into environment
                     Scope.env()[root.name] = { "args": root.args, "defun": root.value };
                 }
@@ -538,13 +503,7 @@
                         _reduce(_proc, Scope.env()[root.name].args[i].value, arg);
                     }
 
-                    // accelerate with memoization
-                    var ret = Memo.getMemoValue(root.name, _args);
-                    if ("undefined" !== typeof ret)
-                        return ret;
-
                     ret = parseTree(_proc);
-                    Memo.setMemoValue(root.name, _args, ret);
                     return ret;
                 }
                 else if ("branch" == root.node) {
