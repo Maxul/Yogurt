@@ -1,0 +1,34 @@
+## Overview
+
+* character stream --> lexer --> token list { node: @, value: $ }
+* token list --> parser --> parse tree
+* parse tree --> evaluator --> result value
+
+### Lexing
+
+eBNF:
+* constants := null | true | false | e | pi
+* operators := + | - | * | / | = | : | brackets
+* brackets := ( | ) | [ | ] | { | }
+* keywords := if | then | else | for | in | while | and | or | not
+* digits := [0-9.]*
+* letters := [a-zA-Z]
+* identifiers := [a-zA-Z][a-zA-Z0-9]*
+* whitespaces := [\r\n\t\ ]*
+
+### Parsing
+
+* block: (statements)
+-- introduces static scope: when referencing identifiers(variables, functions & procedures), search in environment.
+* loop: (condition block)
+* branch: (condition consequence alternative)
+
+* assignment: (identifier value)
+
+* defun: (identifier parameters definition)
+* call: (identifier arguments)
+
+* unary operator: (identifier)
+* binary operator: (left-hand-side right-hand-side)
+
+* procedure: (identifier (parameters) block)

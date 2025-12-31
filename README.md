@@ -1,26 +1,26 @@
-# *Yogurt* - Primary Functional Programming Interpreter
+# *Tequila* - Primary Programming Interpreter
 ```
-__  __                       __ 
-\ \/ /___  ____ ___  _______/ /_
- \  / __ \/ __ `/ / / / ___/ __/
- / / /_/ / /_/ / /_/ / /  / /_  
-/_/\____/\__, /\__,_/_/   \__/  
-        /____/                  
+  _____                    _  _        
+ |_   _|___   __ _  _   _ (_)| |  __ _   
+   | | / _ \ / _` || | | || || | / _` |  
+   | ||  __/| (_| || |_| || || || (_| |  
+   |_| \___| \__, | \__,_||_||_| \__,_|  
+                |_|                      
 ```
-> Eating yogurt is healthy for your body.
+> Drinking much Tequila is unhealthy for your body.
 
 ### Does it support branches or loops like "*if*" "*while*" "*for*", etc?
 
-Sorry, not fully supported yet. Thus *Yogurt* is still not **turing-complete**.
+Yes. *Tequila* is **turing-complete**.
 
 ### What operators can be used for calculation?
 
-Currently, *Yogurt* supports the following operators:
+Currently, *Tequila* supports the following operators:
 - unary: + -
-- binary: + -
+- binary: + - * / %
 - assignment: =
 - precedence: ( )
-- raletional: < >
+- raletional: <=>
 - argument separator: ,
 - lexical scope delimiter: { }
 
@@ -28,19 +28,19 @@ Currently, *Yogurt* supports the following operators:
 
 Yes, of cource. You can use *pi* and *e* and many other frequently used functions like *sin()*, *abs()* and so forth.
 
-### Does *Yogurt* apply any type system?
+### Does *Tequila* apply any type system?
 
 Uh-huh, we are considering this to be a future work.  
-At this point, every literal in *Yogurt* is a 64-bit double precision floating point numeric.
+At this point, every literal in *Tequila* is a 64-bit double precision floating point numeric.
 
 ### Which kind of identifier name is valid?
 
 [a-zA-Z][a-zA-Z0-9]\*
 
-### Any tips on getting hands dirty on *Yogurt*?
+### Any tips on getting hands dirty on *Tequila*?
 
 There are a couple of things that we hope you to notice:  
-**Variables** and **functions** are both first-class citizens in *Yogurt*. The major difference is that variables, when defined, needs to be evaluated immediately, whereas functions can be lazily evaluated upon being called.  
+**Variables** and **functions** are both first-class citizens in *Tequila*. The major difference is that variables, when defined, needs to be evaluated immediately, whereas functions can be lazily evaluated upon being called.
 For instance, when you define the function *foo*, like below:
 ```
 >> foo(a) = a  
@@ -87,44 +87,60 @@ Nope. We hope you **enjoy** it!
     + Merge both variables and functions into the block scope.
     + Multiple expressions after being evaluated only return the last one.
 
-### Example Code
-
-```
->> fib(i) = if i > 2 then fib(i-1) + fib(i-2) else 1
-
->> sum(k) = if k < 1 then 0 else k + sum(k-1)
-
->> f(i) = if i < 10 then i else 10
-
->> a = if 1 <= 100 then 1 else 100
-```
++ Beta 0.4
+    + Add support for *for* and *while*.
+    + Add support for arrays, list, dict.
+    + Add support for pure functions and imperative procedures.
 
 ### Guide Book
 
 ```
->> a = 12  
-=> 12
+>> fib(i) = if i > 2 then fib(i-1) + fib(i-2) else 1
+=> Function fib() defined
+>> fib(20)
+=> 6765
 
->> a
-=> 12
+>> a = if 1 <= 100 then 1 else 100
+=> 1
 
 >> a = b = 10 * (1 - 12)
 => -110
-
 >> b
 => -110
 
->> sum(k) = if k < 1 then 0 else k + sum(k-1)  
-=> null
-
+>> sum(k) = if k < 1 then 0 else k + sum(k-1)
+=> Function sum() defined
 >> sum(1000)
 => 500500
 
->> proc := { a = 10; b = 12; a + b; }
-=> null
+>> sum = 0
+=> 0
+>> for (i = 1; i <= 100; i = i + 1) { sum = sum + i }
+=> 100
 
->> proc()
-=> 22
+>> nums = [1, 2, 3, 4]
+=> 1,2,3,4
+>> exists = 3 in nums
+=> true
+
+>> a = 100
+=> 100
+>> while a < 10 { a = 999 }
+=> null
+>> a
+=> 100
+
+>> nums = [10, 20, 30]
+=> 10,20,30
+>> sum = 0
+=> 0
+>> for (n in nums) { sum = sum + n }
+=> 60
+
+>> circumference(d) := { PI = 3.14; PI * d; }
+=> Procedure circumference() defined
+>> circumference(10)
+=> 31.400000000000002
 
 >> a = 100
 => 100
@@ -132,4 +148,9 @@ Nope. We hope you **enjoy** it!
 => 10
 >> a
 => 100
+
+>> t = (1, 2, 3)
+=> 1,2,3
+>> t[1]
+=> 2
 ```

@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>Minimized Functional Programming Interpreter in JavaScript</title>
+    <title>Yet Another Functional Programming Interpreter</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
     <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
@@ -39,19 +39,16 @@
     <script>
         // utils.js
 
-        var dupObject = function (o) { return JSON.parse(JSON.stringify(o)); };
-
-        var keywords = [
+        const keywords = [
             "if", "then", "else", // branch
-            "not", "and", "or",   // loop
-            "while", "for", "in", // logical
+            "not", "and", "or",   // logical
+            "while", "for", "in", // loop
         ];
 
-        var procedures = {};
-        var suffix_ops = "<>=!:";
-        var brackets = "()[]{}";
+        const suffix_ops = "<>=!:";
+        const brackets = "()[]{}";
 
-        var constants = {
+        const constants = {
             pi: Math.PI,
             e: Math.E,
             epsilon: Number.EPSILON,
@@ -60,7 +57,7 @@
             null: null,
         };
 
-        var native_functions = {
+        const native_functions = {
             sin: Math.sin,
             cos: Math.cos,
             tan: Math.tan,
@@ -79,8 +76,7 @@
 
         // scope.js
 
-        var Scope = {
-
+        const Scope = {
             env_stack: [{}],
             depth: 0,
 
@@ -89,23 +85,23 @@
             },
 
             push: function () {
-                this.env_stack.push(dupObject(this.env_stack[this.depth]));
+                var parent = this.env_stack[this.depth];
+                var new_scope = Object.create(parent);
+                this.env_stack.push(new_scope);
                 this.depth += 1;
             },
 
             pop: function () {
-                if (this.depth == 0)
-                    throw "Stack is empty";
+                if (this.depth == 0) throw "Stack is empty";
                 this.env_stack.pop();
                 this.depth -= 1;
             },
-
         };
 
         // memo.js
 
         ////////// function return value memory database //////////
-        var Memo = {
+        const Memo = {
 
             // [ {func: name, args: [], ret: value}, ... ]
             memoization: [],
@@ -113,7 +109,7 @@
             makeMemoString: function (args) {
                 var ret = "";
 
-                for (i in args)
+                for (var i in args)
                     ret += String(args[i]) + ' ';
                 return ret;
             },
@@ -144,7 +140,7 @@
         /*
          * lexer: tokenize input stream into lexemes list
          */
-        function yogurt_lex(input) {
+        function tequila_lex(input) {
             var token_list = [];
             var index = 0;
 
@@ -187,13 +183,25 @@
                     return { node: ret };
                 }
 
+                if (ch === '"' || ch === "'") {
+                    var quote = ch;
+                    var string = "";
+                    advance(); // skip head "\""
+                    while (input[index] !== quote && index < input.length) {
+                        string += input[index];
+                        advance();
+                    }
+                    advance(); // skip tail "\""
+                    return { "node": "string", "value": string };
+                }
+
                 if (isDigit(ch)) {
                     var num = ch;
 
-                    while (isDigit(ch)) {
+                    do {
                         advance();
                         num += ch;
-                    }
+                    } while (isDigit(ch));
 
                     num = parseFloat(num);
                     if (!isFinite(num))
@@ -230,7 +238,7 @@
         /*
          * parser: construct a parse tree according to token list
          */
-        function yogurt_parse(token_list) {
+        function tequila_parse(token_list) {
             var tokTable = {};      // ready to get referenced for all possible symbols
 
             function getNextToken() { return token_list.shift(); }
@@ -290,8 +298,30 @@
                 };
             }
 
+            makeSymbol("string", function (n) { return n.value; });
+
             makeSymbol(",");
             makeSymbol(";");
+            makeSymbol(":");
+
+            // for array
+            makeSymbol("[", function () {
+                var elems = [];
+                if (token_list[0].node !== "]") {
+                    while (true) {
+                        elems.push(expr(0));
+                        if (token_list[0].node !== ",") {
+                            break;
+                        }
+                        getNextToken(); // eat ","
+                    }
+                }
+                if (token_list[0].node !== "]")
+                    throw "Expected closing bracket ']'";
+                getNextToken(); // eat "]"
+                return { "node": "array", "elements": elems };
+            });
+            makeSymbol("]");
 
             makeSymbol("for", function () {
                 if ("(" !== token_list[0].node)
@@ -299,22 +329,55 @@
                 getNextToken(); // eat "("
 
                 var init = expr(0);
-                if (";" !== token_list[0].node)
-                    throw "Expected ';' after init";
-                getNextToken(); // eat the first ";"
 
-                var cond = expr(0);
+                // case A: for n in nums
+                if (init.node === "in") {
+                    if (")" !== token_list[0].node)
+                        throw "Expected ')' after for-in loop";
+                    getNextToken(); // eat ")"
+
+                    var body = expr(0);
+
+                    return {
+                        "node": "loop_for_in",
+                        "iterator": init.lhs,   // "n"
+                        "collection": init.rhs, // "nums"
+                        "body": body
+                    };
+                }
+
+                // case B: for (i = 0; i < N; i = i + 1)
+                if (";" !== token_list[0].node)
+                    throw "Expected ';' or 'in' in for loop";
+                getNextToken(); // eat first ";"
+
+                var cond = expr(0); // 解析条件 (i < 10)
+
                 if (";" !== token_list[0].node)
                     throw "Expected ';' after condition";
-                getNextToken(); // eat the second ";"
+                getNextToken(); // eat second ";"
 
                 var step = expr(0);
+
                 if (")" !== token_list[0].node)
                     throw "Expected ')' after step";
                 getNextToken(); // eat ")"
 
                 var body = expr(0);
-                return { "node": "loop_for", "init": init, "cond": cond, "step": step, "body": body };
+
+                return {
+                    "node": "loop_for",
+                    "init": init,
+                    "cond": cond,
+                    "step": step,
+                    "body": body
+                };
+            });
+
+            makeSymbol("while", function () {
+                var cond = expr(0);
+                var body = expr(0);
+                return { "node": "loop_while", "cond": cond, "body": body };
             });
 
             makeSymbol("if", function () {
@@ -338,6 +401,20 @@
             makeSymbol("(", function () {
                 var e = expr(0);
 
+                // check if it is a tuple
+                if (token_list[0].node === ",") {
+                    var elems = [e];
+                    while (token_list[0].node === ",") {
+                        getNextToken(); // eat ","
+                        if (token_list[0].node === ")") break;
+                        elems.push(expr(0));
+                    }
+                    if (")" !== token_list[0].node)
+                        throw "Expected closing parenthesis ')' for tuple";
+                    getNextToken(); // eat ")"
+                    return { node: "tuple", elements: elems };
+                }
+
                 if (")" !== token_list[0].node)
                     throw "Expected closing parenthesis ')'";
                 getNextToken(); // eat ")"
@@ -346,15 +423,49 @@
             makeSymbol(")");
 
             makeSymbol('{', function () {
+                // 1. handle empty dict {} 
+                if ("}" === token_list[0].node) {
+                    getNextToken();
+                    return { "node": "dict", "pairs": [] };
+                }
+
+                var isDict = false;
+                if (token_list.length > 1 && token_list[1].node === ":") {
+                    isDict = true;
+                }
+
+                if (isDict) {
+                    var pairs = [];
+                    do {
+                        var key = expr(0);
+                        if (":" !== token_list[0].node)
+                            throw "Expected ':' in dict definition";
+                        getNextToken(); // eat ":""
+
+                        var val = expr(0);
+                        pairs.push({ key: key, val: val });
+
+                        if ("," === token_list[0].node) {
+                            getNextToken(); // eat ",""
+                        } else {
+                            break;
+                        }
+                    } while ("}" !== token_list[0].node);
+
+                    if ("}" !== token_list[0].node) throw "Expected '}'";
+                    getNextToken();
+                    return { node: "dict", pairs: pairs };
+                }
+
                 var statements = [];
 
-                if ("}" !== token_list[0].node) {
-                    do
-                        statements.push(expr(0));
-                    while ("}" !== token_list[0].node);
+                while ("}" !== token_list[0].node) {
+                    if (";" === token_list[0].node) {
+                        getNextToken();
+                        continue;
+                    }
 
-                    if ("}" !== token_list[0].node)
-                        throw "Unreachable statement";
+                    statements.push(expr(0));
                 }
                 getNextToken();     // eat "}"
                 return { node: "block", stmts: statements };
@@ -396,11 +507,20 @@
             }
 
             // install standard operators and set precedence, 1 is the lowest
+            infix("[", 8, 8, function (lhs) {
+                var index = expr(0);
+                if ("]" !== token_list[0].node)
+                    throw "Expected ']'";
+                getNextToken(); // eat "]"
+                return { "node": "index", "target": lhs, "index": index };
+            });
+
             prefix("+", 7);
             prefix("-", 7);
 
             infix("*", 6);
             infix("/", 6);
+            infix("%", 6);
             infix("+", 5);
             infix("-", 5);
 
@@ -410,6 +530,7 @@
             infix(">=", 4);
             infix("==", 4);
             infix("!=", 4);
+            infix("in", 4);
 
             prefix("not", 3);
             infix("and", 3);
@@ -429,29 +550,36 @@
                 }
                 throw "Invalid lvalue.";
             });
-            // infix(":=", 1, 2, function (lhs) {
-            //     var t;
-            //     var statement = [];
+            infix(":=", 1, 2, function (lhs) {
+                var name;
+                var params = [];
 
-            //     if ("id" === lhs.node) {
-            //         if ("{" !== token_list[0].node)
-            //             throw "Expected opening block '{'";
-            //         getNextToken(); // eat "{"
-            //         while ("}" !== token_list[0].node) {
-            //             statement.push(token_list[0]);
-            //             getNextToken();
-            //         }
-            //         getNextToken();
-            //     }
-            //     statement.push({ node: "EOF" });
-            //     procedures[String(lhs.value)] = statement;
-            //     return { node: "proc", name: lhs.value };
-            // });
+                if (lhs.node === "id") {        // without args
+                    name = lhs.value;
+                }
+                else if (lhs.node === "call") { // with args
+                    name = lhs.name;
+                    for (var i = 0; i < lhs.args.length; i++) {
+                        if (lhs.args[i].node !== "id")
+                            throw "Parameter name must be an identifier";
+                        params.push(lhs.args[i].value);
+                    }
+                } else {
+                    throw "Invalid lvalue for procedure definition.";
+                }
+                var body = expr(0);
+                return { node: "proc_def", name: name, params: params, body: body };
+            });
             console.log(JSON.stringify(token_list));
             var parse_tree = [];
 
-            while ("EOF" !== token_list[0].node)
+            while ("EOF" !== token_list[0].node) {
+                if (";" === token_list[0].node) {
+                    getNextToken();
+                    continue;
+                }
                 parse_tree.push(expr(0));
+            }
             console.log(parse_tree.length);
             console.log(JSON.stringify(parse_tree));
             return parse_tree;
@@ -462,7 +590,7 @@
         /*
          * evaluate: iterate each parse node and do syntax analysis
          */
-        function yogurt_evaluate(parse_tree) {
+        function tequila_evaluate(parse_tree) {
             var ops = {
                 // take the place of LHS with RHS when only RHS exists
                 "+": function (a, b) { return "undefined" === typeof b ? +a : a + b; },
@@ -484,19 +612,16 @@
                 "or": function (a, b) {
                     return "boolean" === typeof a && "boolean" === typeof b ? a || b : null;
                 },
-            };
-
-            function _reduce(root, param, argum) {
-                if ("object" !== typeof root)
-                    return null;
-
-                if ("id" === root.node && param === root.value) {
-                    root.node = "num";
-                    root.value = argum;
+                "in": function (a, b) {
+                    if (Array.isArray(b)) {
+                        return b.includes(a);
+                    }
+                    if (typeof b === 'object' && b !== null) {
+                        return a in b;
+                    }
+                    return false;
                 }
-                for (child in root)
-                    _reduce(root[child], param, argum);
-            }
+            };
 
             function parseTree(root) {
                 if ("num" === root.node) {
@@ -506,17 +631,6 @@
                     // is it a constant value?
                     if ("undefined" !== typeof constants[root.value])
                         return constants[root.value];
-
-                    // another attempt at procedure
-                    var proc = procedures[root.value];
-
-                    if ("object" === typeof proc) {
-                        proc = dupObject(proc);
-                        console.log(JSON.stringify(proc));
-                        var rest = yogurt_evaluate(proc);
-                        console.log(rest);
-                        return rest;
-                    }
 
                     // may be a variable defined before
                     var val = Scope.env()[root.value];
@@ -535,44 +649,86 @@
                     // constants cannot be re-defined
                     if ("undefined" !== typeof constants[root.name])
                         throw "Constant \"" + root.name + "\" has already been defined";
+
                     // push a value bound to a name into the current environment
-                    return Scope.env()[root.name] = parseTree(root.value);
+                    var val = parseTree(root.value);
+                    var currentScope = Scope.env();
+
+                    // use parent's if it exists, otherwise define local
+                    var scopeCursor = currentScope;
+                    var found = false;
+
+                    while (scopeCursor && scopeCursor !== Object.prototype) {
+                        if (Object.prototype.hasOwnProperty.call(scopeCursor, root.name)) {
+                            scopeCursor[root.name] = val;
+                            found = true;
+                            break;
+                        }
+                        scopeCursor = Object.getPrototypeOf(scopeCursor);
+                    }
+
+                    if (!found) {
+                        currentScope[root.name] = val; // new variable only local
+                    }
+
+                    return val;
                 }
                 else if ("def" === root.node) {
                     // clear previous definition
                     Memo.clearMemoRow(root.name);
                     // push a definition bound to a prototype into environment
-                    Scope.env()[root.name] = { "args": root.args, "defun": root.value };
+                    var paramNames = [];
+                    for (var i = 0; i < root.args.length; i++) {
+                        paramNames.push(root.args[i].value);
+                    }
+
+                    Scope.env()[root.name] = {
+                        type: "func",
+                        params: paramNames,
+                        body: root.value
+                    };
+                    return "Function " + root.name + "() defined";
                 }
                 else if ("call" === root.node) {
                     // is it a function provided by us?
                     if ("function" === typeof native_functions[root.name]) {
+                        var nativeArgs = [];
                         for (var i = 0; i < root.args.length; ++i)
-                            root.args[i] = parseTree(root.args[i]);
-                        return native_functions[root.name].apply(null, root.args);
+                            nativeArgs.push(parseTree(root.args[i]));
+                        return native_functions[root.name].apply(null, nativeArgs);
                     }
 
-                    if ("undefined" === typeof Scope.env()[root.name])
+                    var funcDef = Scope.env()[root.name];
+                    if ("undefined" === typeof funcDef)
                         throw "Function \"" + root.name + "\" is undefined";
 
-                    var arg;
-                    var _args = [];
-                    var _proc = dupObject(Scope.env()[root.name].defun);
-
-                    for (var i = 0; i < root.args.length; ++i) {
-                        arg = parseTree(root.args[i]);
-                        _args.push(arg);
-                        _reduce(_proc, Scope.env()[root.name].args[i].value, arg);
+                    if (root.args.length !== funcDef.params.length) {
+                        throw "Function '" + root.name + "' expects " +
+                        funcDef.params.length + " arguments, got " + root.args.length;
                     }
 
-                    // accelerate with memoization
-                    var ret = Memo.getMemoValue(root.name, _args);
-                    if ("undefined" !== typeof ret)
-                        return ret;
+                    var argValues = [];
+                    for (var i = 0; i < root.args.length; ++i) {
+                        argValues.push(parseTree(root.args[i]));
+                    }
 
-                    ret = parseTree(_proc);
-                    Memo.setMemoValue(root.name, _args, ret);
-                    return ret;
+                    var memoKey = Memo.makeMemoString(argValues);
+
+                    Scope.push();
+
+                    for (var i = 0; i < funcDef.params.length; ++i) {
+                        var paramName = funcDef.params[i];
+                        Scope.env()[paramName] = argValues[i];
+                    }
+
+                    var result;
+                    try {
+                        result = parseTree(funcDef.body);
+                    } finally {
+                        Scope.pop();
+                    }
+
+                    return result;
                 }
                 else if ("branch" == root.node) {
                     var c = parseTree(root.cond);
@@ -590,13 +746,14 @@
 
                     Scope.push();   // enter block
                     // iterate each statement and evaluate the node
+                    var result = null;
                     for (var i = 0; i < ss.length; ++i)
-                        output.push(String(parseTree(ss[i])));
+                        result = parseTree(ss[i]);
                     Scope.pop();    // exit block
-                    return;
+                    return result;
                 }
                 else if ("loop_for" === root.node) {
-                    Scope.push(); 
+                    Scope.push();
                     parseTree(root.init);
                     var lastResult = null;
                     while (true) {
@@ -607,6 +764,73 @@
                     }
                     Scope.pop();
                     return lastResult;
+                }
+                else if ("loop_for_in" === root.node) {
+                    var collection = parseTree(root.collection);
+
+                    if (!Array.isArray(collection)) throw "For-in loop expects an array.";
+
+                    Scope.push();
+                    var lastResult = null;
+                    var varName = root.iterator.value;
+                    for (var i = 0; i < collection.length; i++) {
+                        Scope.env()[varName] = collection[i];
+                        lastResult = parseTree(root.body);
+                    }
+                    Scope.pop();
+                    return lastResult;
+                }
+                else if ("loop_while" === root.node) {
+                    Scope.push();
+                    var ret = null;
+                    while (parseTree(root.cond)) {
+                        ret = parseTree(root.body);
+                    }
+                    Scope.pop();
+                    return ret;
+                }
+                else if ("array" === root.node) {
+                    var result = [];
+                    for (var i = 0; i < root.elements.length; ++i) {
+                        result.push(parseTree(root.elements[i]));
+                    }
+                    return result;
+                }
+                else if ("tuple" === root.node) {
+                    var res = [];
+                    for (var i = 0; i < root.elements.length; ++i)
+                        res.push(parseTree(root.elements[i]));
+                    return res;
+                }
+                else if ("dict" === root.node) {
+                    var res = {};
+                    for (var i = 0; i < root.pairs.length; ++i) {
+                        var pair = root.pairs[i];
+                        var keyRaw = pair.key;
+                        var keyName;
+
+                        if (keyRaw.node === "id") keyName = keyRaw.value;
+                        else if (keyRaw.node === "num") keyName = keyRaw.value;
+                        else keyName = parseTree(keyRaw);
+
+                        var val = parseTree(pair.val);
+                        res[keyName] = val;
+                    }
+                    return res;
+                }
+                else if ("index" === root.node) {
+                    // obj[key]
+                    var target = parseTree(root.target);
+                    var idx = parseTree(root.index);
+
+                    if (target === undefined || target === null)
+                        throw "Cannot index null or undefined";
+
+                    return target[idx];
+                }
+                else if ("proc_def" === root.node) {
+                    Scope.env()[root.name] = { type: "proc", params: root.params, body: root.body };
+                    return "Procedure " + root.name + "() defined";
                 }
                 return "nil";       // unhandled exception
             }
@@ -643,9 +867,9 @@
                         var tmp, ret = [];
 
                         var input_stream = command.trim();
-                        var token_list = yogurt_lex(input_stream);
-                        var parse_tree = yogurt_parse(token_list);
-                        var result_array = yogurt_evaluate(parse_tree);
+                        var token_list = tequila_lex(input_stream);
+                        var parse_tree = tequila_parse(token_list);
+                        var result_array = tequila_evaluate(parse_tree);
                         console.log(JSON.stringify(result_array));
                         while (tmp = result_array.shift())
                             if ("undefined" !== tmp)
@@ -658,8 +882,8 @@
                         term.error(String(err));
                     }
                 }, {
-                    greetings: 'Javascript Interpreter',
-                    name: "Yogurt",
+                    greetings: 'Yet Another Interpreter',
+                    name: "Tequila",
                     prompt: ">> ",
                 });
             }
