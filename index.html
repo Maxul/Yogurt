@@ -48,7 +48,6 @@
         ];
 
         var procedures = {};
-
         var suffix_ops = "<>=!:";
         var brackets = "()[]{}";
 
@@ -291,6 +290,33 @@
                 };
             }
 
+            makeSymbol(",");
+            makeSymbol(";");
+
+            makeSymbol("for", function () {
+                if ("(" !== token_list[0].node)
+                    throw "Expected '(' after for";
+                getNextToken(); // eat "("
+
+                var init = expr(0);
+                if (";" !== token_list[0].node)
+                    throw "Expected ';' after init";
+                getNextToken(); // eat the first ";"
+
+                var cond = expr(0);
+                if (";" !== token_list[0].node)
+                    throw "Expected ';' after condition";
+                getNextToken(); // eat the second ";"
+
+                var step = expr(0);
+                if (")" !== token_list[0].node)
+                    throw "Expected ')' after step";
+                getNextToken(); // eat ")"
+
+                var body = expr(0);
+                return { "node": "loop_for", "init": init, "cond": cond, "step": step, "body": body };
+            });
+
             makeSymbol("if", function () {
                 var cond = expr(0);
                 if ("then" !== token_list[0].node)
@@ -318,7 +344,7 @@
                 return e;
             });
             makeSymbol(")");
-            makeSymbol(",");
+
             makeSymbol('{', function () {
                 var statements = [];
 
@@ -331,7 +357,6 @@
                         throw "Unreachable statement";
                 }
                 getNextToken();     // eat "}"
-                //console.log(JSON.stringify(statements));
                 return { node: "block", stmts: statements };
             });
             makeSymbol('}');
@@ -404,24 +429,24 @@
                 }
                 throw "Invalid lvalue.";
             });
-            infix(":=", 1, 2, function (lhs) {
-                var t;
-                var statement = [];
+            // infix(":=", 1, 2, function (lhs) {
+            //     var t;
+            //     var statement = [];
 
-                if ("id" === lhs.node) {
-                    if ("{" !== token_list[0].node)
-                        throw "Expected opening block '{'";
-                    getNextToken(); // eat "{"
-                    while ("}" !== token_list[0].node) {
-                        statement.push(token_list[0]);
-                        getNextToken();
-                    }
-                    getNextToken();
-                }
-                statement.push({ node: "EOF" });
-                procedures[String(lhs.value)] = statement;
-                return { node: "proc", name: lhs.value };
-            });
+            //     if ("id" === lhs.node) {
+            //         if ("{" !== token_list[0].node)
+            //             throw "Expected opening block '{'";
+            //         getNextToken(); // eat "{"
+            //         while ("}" !== token_list[0].node) {
+            //             statement.push(token_list[0]);
+            //             getNextToken();
+            //         }
+            //         getNextToken();
+            //     }
+            //     statement.push({ node: "EOF" });
+            //     procedures[String(lhs.value)] = statement;
+            //     return { node: "proc", name: lhs.value };
+            // });
             console.log(JSON.stringify(token_list));
             var parse_tree = [];
 
@@ -569,6 +594,19 @@
                         output.push(String(parseTree(ss[i])));
                     Scope.pop();    // exit block
                     return;
+                }
+                else if ("loop_for" === root.node) {
+                    Scope.push(); 
+                    parseTree(root.init);
+                    var lastResult = null;
+                    while (true) {
+                        var condition = parseTree(root.cond);
+                        if (!condition) break;
+                        lastResult = parseTree(root.body);
+                        parseTree(root.step);
+                    }
+                    Scope.pop();
+                    return lastResult;
                 }
                 return "nil";       // unhandled exception
             }
