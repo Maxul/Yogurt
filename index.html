@@ -151,7 +151,7 @@
 
             var ch;                     /* current character */
 
-            // private methods using RE
+            // private methods using regular expressions
             function isSpace(c) { return /\s/.test(c); }
             function isDigit(c) { return /[\d\.]/.test(c); }
             function isOp(c) { return /[\+\-\*\/\(\)\,\=\<\>\!\:\;\[\]\{\}]/.test(c); }
@@ -195,7 +195,7 @@
                         advance();
                         num += ch;
                     }
-                        
+
                     num = parseFloat(num);
                     if (!isFinite(num))
                         throw "Number is too large or too small for a 64-bit floating-point.";
@@ -404,7 +404,6 @@
                 }
                 throw "Invalid lvalue.";
             });
-
             infix(":=", 1, 2, function (lhs) {
                 var t;
                 var statement = [];
@@ -414,21 +413,21 @@
                         throw "Expected opening block '{'";
                     getNextToken(); // eat "{"
                     while ("}" !== token_list[0].node) {
-                        statement.push(expr(0));
+                        statement.push(token_list[0]);
                         getNextToken();
                     }
                     getNextToken();
                 }
-                statement.push({node: "EOF"});
+                statement.push({ node: "EOF" });
                 procedures[String(lhs.value)] = statement;
                 return { node: "proc", name: lhs.value };
             });
-            console.log( JSON.stringify(token_list) );
+            console.log(JSON.stringify(token_list));
             var parse_tree = [];
 
             while ("EOF" !== token_list[0].node)
                 parse_tree.push(expr(0));
-            console.log ( parse_tree.length );
+            console.log(parse_tree.length);
             console.log(JSON.stringify(parse_tree));
             return parse_tree;
         }
