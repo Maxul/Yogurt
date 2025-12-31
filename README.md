@@ -1,17 +1,24 @@
-# *Tequila* - Primary Functional Programming Interpreter
->  _____                    _  _        
-> |_   _|___   __ _  _   _ (_)| |  __ _   
->   | | / _ \ / _` || | | || || | / _` |  
->   | ||  __/| (_| || |_| || || || (_| |  
->   |_| \___| \__, | \__,_||_||_| \__,_|  
->                |_|                      
->   
+# *Yogurt* - Primary Functional Programming Interpreter
+
+> Eating yogurt is healthy for your body.
+
+```
+  __   __   U  ___ u   ____     _   _    ____      _____   
+  \ \ / /    \/"_ \/U /"___|uU |"|u| |U |  _"\ u  |_ " _|  
+   \ V /     | | | |\| |  _ / \| |\| | \| |_) |/    | |    
+  U_|"|_u.-,_| |_| | | |_| |   | |_| |  |  _ <     /| |\   
+    |_|   \_)-\___/   \____|  <<\___/   |_| \_\   u |_|U   
+.-,//|(_       \\     _)(|_  (__) )(    //   \\_  _// \\_  
+ \_) (__)     (__)   (__)__)     (__)  (__)  (__)(__) (__) 
+```
 
 ### Does it support branches or loops like "*if*" "*while*" "*for*", etc?
-Sorry, not fully supported yet. Thus *Tequila* is still not **turing-complete**.
+
+Sorry, not fully supported yet. Thus *Yogurt* is still not **turing-complete**.
 
 ### What operators can be used for calculation?
-Currently, *Tequila* supports the following operators:
+
+Currently, *Yogurt* supports the following operators:
 - unary: + -
 - binary: + -
 - assignment: =
@@ -21,31 +28,41 @@ Currently, *Tequila* supports the following operators:
 - lexical scope delimiter: { }
 
 ### Is there any built-in constants or functions to use?
+
 Yes, of cource. You can use *pi* and *e* and many other frequently used functions like *sin()*, *abs()* and so forth.
 
-### Does *Tequila* apply any type system?
+### Does *Yogurt* apply any type system?
+
 Uh-huh, we are considering this to be a future work.  
-At this point, every literal in *Tequila* is a 64-bit double precision floating point numeric.
+At this point, every literal in *Yogurt* is a 64-bit double precision floating point numeric.
 
 ### Which kind of identifier name is valid?
+
 [a-zA-Z][a-zA-Z0-9]\*
 
-### Any tips on getting hands dirty on *Tequila*?
+### Any tips on getting hands dirty on *Yogurt*?
+
 There are a couple of things that we hope you to notice:  
-**Variables** and **functions** are both first-class citizens in *Tequila*. The major difference is that variables, when defined, needs to be evaluated immediately, whereas functions can be lazily evaluated upon being called.  
+**Variables** and **functions** are both first-class citizens in *Yogurt*. The major difference is that variables, when defined, needs to be evaluated immediately, whereas functions can be lazily evaluated upon being called.  
 For instance, when you define the function *foo*, like below:
-> foo(a) = a  
+```
+>> foo(a) = a  
+```
 
 Computer has no idea what *a* is, but it allows it to be ambiguous.  
 If we set the variable *foo* to be *a*, computer must ask for what *a* is until *a* is defined as a concrete value.
 
 Variables can be deemed as a variant of functions without parameters. Consider the following example:
-> f() = 0.0  
-> g = 0.0  
+```
+>> f() = 0.0  
+>> g = 0.0  
+```
 
 They can be treated equivalently, i.e. a fixed point in Euclidean space.
-> f(k, b) = k * 10 + b  
-> g = x * 10 + y  
+```
+>> f(k, b) = k * 10 + b  
+>> g = x * 10 + y  
+```
 
 The former is constrained by parameter *k* and *b*. This function can not be evaluated successfully until both are set. However, the latter must know *x* and *y* so as to obtain the value of *g*.  
 Just bear in mind, functions are those that store whole procedures (as well as their environments) in memory, in which case, they are typically referred to as **closures**.
@@ -53,9 +70,8 @@ Just bear in mind, functions are those that store whole procedures (as well as t
 ### Anything else?
 Nope. We hope you **enjoy** it!
 
+### History
 
-### Updated History
-### Troubleshouting
 + Beta 0.0
     + Variables and functions are both first-class citizens.
 
@@ -75,42 +91,48 @@ Nope. We hope you **enjoy** it!
     + Multiple expressions after being evaluated only return the last one.
 
 ### Example Code
-> fib(i) = if i > 2 then fib(i-1) + fib(i-2) else 1  
 
-> sum(k) = if k < 1 then 0 else k + sum(k-1)  
+```
+>> fib(i) = if i > 2 then fib(i-1) + fib(i-2) else 1
 
-> f(i) = if i < 10 then i else 10  
-> a = if 1 <= 100 then 1 else 100  
+>> sum(k) = if k < 1 then 0 else k + sum(k-1)
+
+>> f(i) = if i < 10 then i else 10
+
+>> a = if 1 <= 100 then 1 else 100
+```
 
 ### Guide Book
-> \>\> a = 12  
-> \=\> 12
 
-\>\> a
-\=\> 12
+```
+>> a = 12  
+=> 12
 
-\>\> a = b = 10 * (1 - 12)
-\=\> -110
+>> a
+=> 12
 
-\>\> b
-\=\> -110
+>> a = b = 10 * (1 - 12)
+=> -110
 
-\>\> sum(k) = if k < 1 then 0 else k + sum(k-1)  
-\=\> null
+>> b
+=> -110
 
-\>\> sum(1000)
-\=\> 500500
+>> sum(k) = if k < 1 then 0 else k + sum(k-1)  
+=> null
 
-\>\> proc := { a = 10; b = 12; a + b; }
-\=\> null
+>> sum(1000)
+=> 500500
 
-\>\> proc()
-\=\> 22
+>> proc := { a = 10; b = 12; a + b; }
+=> null
 
-\>\> a = 100
-\=\> 100
-\>\> { a = 10 }
-\=\> 10
-\>\> a
-\=\> 100
+>> proc()
+=> 22
 
+>> a = 100
+=> 100
+>> { a = 10 }
+=> 10
+>> a
+=> 100
+```
