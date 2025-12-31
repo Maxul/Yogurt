@@ -12,8 +12,7 @@ eBNF:
 constants := null | true | false | e | pi
 operators := + | - | * | / | = | : | brackets
 brackets := ( | ) | [ | ] | { | }
-keywords := if | then | else | for | in | while
-            | and | or | not
+keywords := if | then | else | for | in | while | and | or | not
 
 digits := [0-9.]*
 letters := [a-zA-Z]

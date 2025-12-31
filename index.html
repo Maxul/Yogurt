@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
-    <title>Minimized Interpreter in JavaScript</title>
+    <title>Minimized Functional Programming Interpreter in JavaScript</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
     <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
@@ -85,6 +85,10 @@
             env_stack: [{}],
             depth: 0,
 
+            env: function () {
+                return this.env_stack[this.depth];
+            },
+
             push: function () {
                 this.env_stack.push(dupObject(this.env_stack[this.depth]));
                 this.depth += 1;
@@ -97,10 +101,43 @@
                 this.depth -= 1;
             },
 
-            env: function () {
-                return this.env_stack[this.depth];
+        };
+
+        // memo.js
+
+        ////////// function return value memory database //////////
+        var Memo = {
+
+            // [ {func: name, args: [], ret: value}, ... ]
+            memoization: [],
+
+            makeMemoString: function (args) {
+                var ret = "";
+
+                for (i in args)
+                    ret += String(args[i]) + ' ';
+                return ret;
             },
 
+            getMemoValue: function (func, args) {
+                var key = this.makeMemoString(args);
+                if (this.memoization[func])
+                    return this.memoization[func][key];
+                return undefined;
+            },
+
+            setMemoValue: function (func, args, val) {
+                if ("undefined" === typeof this.memoization[func])
+                    this.memoization[func] = [];
+
+                var key = this.makeMemoString(args);
+                this.memoization[func][key] = val;
+            },
+
+            clearMemoRow: function (func) {
+                if ("undefined" !== typeof this.memoization[func])
+                    this.memoization[func] = [];
+            },
         };
 
         // lex.js
@@ -108,7 +145,7 @@
         /*
          * lexer: tokenize input stream into lexemes list
          */
-        function tequila_lex(input) {
+        function yogurt_lex(input) {
             var token_list = [];
             var index = 0;
 
@@ -154,11 +191,11 @@
                 if (isDigit(ch)) {
                     var num = ch;
 
-                    while (index + 1 < input.length && isDigit(input[index + 1])) {
+                    while (isDigit(ch)) {
                         advance();
                         num += ch;
                     }
-
+                        
                     num = parseFloat(num);
                     if (!isFinite(num))
                         throw "Number is too large or too small for a 64-bit floating-point.";
@@ -181,7 +218,6 @@
                 throw "Unrecognized token.";
             }
 
-            var token;
             while (token = getToken())
                 addToken(token);
 
@@ -195,7 +231,7 @@
         /*
          * parser: construct a parse tree according to token list
          */
-        function tequila_parse(token_list) {
+        function yogurt_parse(token_list) {
             var tokTable = {};      // ready to get referenced for all possible symbols
 
             function getNextToken() { return token_list.shift(); }
@@ -272,7 +308,6 @@
             });
             makeSymbol("then");
             makeSymbol("else");
-
 
             makeSymbol("(", function () {
                 var e = expr(0);
@@ -369,6 +404,7 @@
                 }
                 throw "Invalid lvalue.";
             });
+
             infix(":=", 1, 2, function (lhs) {
                 var t;
                 var statement = [];
@@ -379,20 +415,20 @@
                     getNextToken(); // eat "{"
                     while ("}" !== token_list[0].node) {
                         statement.push(expr(0));
-                        //getNextToken();
+                        getNextToken();
                     }
                     getNextToken();
                 }
-                //statement.push({node: "EOF"});
+                statement.push({node: "EOF"});
                 procedures[String(lhs.value)] = statement;
                 return { node: "proc", name: lhs.value };
             });
-            //console.log( JSON.stringify(token_list) );
+            console.log( JSON.stringify(token_list) );
             var parse_tree = [];
 
             while ("EOF" !== token_list[0].node)
                 parse_tree.push(expr(0));
-            //console.log ( parse_tree.length );
+            console.log ( parse_tree.length );
             console.log(JSON.stringify(parse_tree));
             return parse_tree;
         }
@@ -402,7 +438,7 @@
         /*
          * evaluate: iterate each parse node and do syntax analysis
          */
-        function tequila_evaluate(parse_tree) {
+        function yogurt_evaluate(parse_tree) {
             var ops = {
                 // take the place of LHS with RHS when only RHS exists
                 "+": function (a, b) { return "undefined" === typeof b ? +a : a + b; },
@@ -434,7 +470,7 @@
                     root.node = "num";
                     root.value = argum;
                 }
-                for (var child in root)
+                for (child in root)
                     _reduce(root[child], param, argum);
             }
 
@@ -453,7 +489,7 @@
                     if ("object" === typeof proc) {
                         proc = dupObject(proc);
                         console.log(JSON.stringify(proc));
-                        var rest = tequila_evaluate(proc);
+                        var rest = yogurt_evaluate(proc);
                         console.log(rest);
                         return rest;
                     }
@@ -479,6 +515,8 @@
                     return Scope.env()[root.name] = parseTree(root.value);
                 }
                 else if ("def" === root.node) {
+                    // clear previous definition
+                    Memo.clearMemoRow(root.name);
                     // push a definition bound to a prototype into environment
                     Scope.env()[root.name] = { "args": root.args, "defun": root.value };
                 }
@@ -503,7 +541,13 @@
                         _reduce(_proc, Scope.env()[root.name].args[i].value, arg);
                     }
 
+                    // accelerate with memoization
+                    var ret = Memo.getMemoValue(root.name, _args);
+                    if ("undefined" !== typeof ret)
+                        return ret;
+
                     ret = parseTree(_proc);
+                    Memo.setMemoValue(root.name, _args, ret);
                     return ret;
                 }
                 else if ("branch" == root.node) {
@@ -562,9 +606,9 @@
                         var tmp, ret = [];
 
                         var input_stream = command.trim();
-                        var token_list = tequila_lex(input_stream);
-                        var parse_tree = tequila_parse(token_list);
-                        var result_array = tequila_evaluate(parse_tree);
+                        var token_list = yogurt_lex(input_stream);
+                        var parse_tree = yogurt_parse(token_list);
+                        var result_array = yogurt_evaluate(parse_tree);
                         console.log(JSON.stringify(result_array));
                         while (tmp = result_array.shift())
                             if ("undefined" !== tmp)
