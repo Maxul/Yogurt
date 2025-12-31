@@ -4,53 +4,677 @@
 <head>
     <meta charset="utf-8" />
     <title>Minimized Interpreter in JavaScript</title>
-    <script src="js/jquery-1.7.1.min.js"></script>
-    <script src="js/jquery.mousewheel-min.js"></script>
-    <script src="js/jquery.terminal.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
+    <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/jquery.terminal.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery.terminal/js/xml_formatting.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-polyfills/keyboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/isomorphic-lolcat/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/figlet/lib/figlet.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/jquery.terminal/css/jquery.terminal.min.css" rel="stylesheet" />
+    <style>
+        :root {
+            --color: #aaa;
+            --background: #000;
+            --size: 1.2;
+            --font: monospace;
+            /* --glow: 1 */
+            --animation: terminal-blink;
+        }
 
-    <script src="lex.js"></script>
-    <script src="parse.js"></script>
-    <script src="eval.js"></script>
-    <script src="utils.js"></script>
-    <script src="scope.js"></script>
-    <script src="memo.js"></script>
+        .command {
+            cursor: pointer;
+        }
 
-    <link href="css/jquery.terminal.css" rel="stylesheet"/>
+        @media screen and (min-width: 1200px) {
+            :root {
+                --size: 1.4;
+            }
+        }
+    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
 
 <body>
-<script>
-$(function() {
-    $('body').terminal(function(command, term) {
-        term.push(function(command, term) {
-            try {
-                console.time("ticks");
-                var tmp, ret = [];
+    <script>
+        // utils.js
 
-                var input_stream = command.trim();
-                var token_list = tequila_lex(input_stream);
-                var parse_tree = tequila_parse(token_list);
-                var result_array = tequila_evaluate(parse_tree);
-console.log(JSON.stringify(result_array));
-                while (tmp = result_array.shift())
-                    if ("undefined" !== tmp)
-                        ret.push(tmp);
-                        
-                // only return the value evaluated from last statement
-                term.echo("=> " + ret[ret.length - 1]);
-                console.timeEnd("ticks");
-            } catch (err) {
-                term.error(String(err));
+        var dupObject = function (o) { return JSON.parse(JSON.stringify(o)); };
+
+        var keywords = [
+            "if", "then", "else", // branch
+            "not", "and", "or",   // loop
+            "while", "for", "in", // logical
+        ];
+
+        var procedures = {};
+
+        var suffix_ops = "<>=!:";
+        var brackets = "()[]{}";
+
+        var constants = {
+            pi: Math.PI,
+            e: Math.E,
+            epsilon: Number.EPSILON,
+            true: true,
+            false: false,
+            null: null,
+        };
+
+        var native_functions = {
+            sin: Math.sin,
+            cos: Math.cos,
+            tan: Math.tan,
+            ceil: Math.ceil,
+            floor: Math.floor,
+            round: Math.round,
+            log: Math.log,
+            exp: Math.exp,
+            pow: Math.pow,
+            sqrt: Math.sqrt,
+            abs: Math.abs,
+            max: Math.max,
+            min: Math.min,
+            random: Math.random,
+        };
+
+        // scope.js
+
+        var Scope = {
+
+            env_stack: [{}],
+            depth: 0,
+
+            push: function () {
+                this.env_stack.push(dupObject(this.env_stack[this.depth]));
+                this.depth += 1;
+            },
+
+            pop: function () {
+                if (this.depth == 0)
+                    throw "Stack is empty";
+                this.env_stack.pop();
+                this.depth -= 1;
+            },
+
+            env: function () {
+                return this.env_stack[this.depth];
+            },
+
+        };
+
+        // memo.js
+
+        ////////// function return value memory database //////////
+        var Memo = {
+
+            // [ {func: name, args: [], ret: value}, ... ]
+            memoization: [],
+
+            makeMemoString: function (args) {
+                var ret = "";
+
+                for (i in args)
+                    ret += String(args[i]) + ' ';
+                return ret;
+            },
+
+            getMemoValue: function (func, args) {
+                var key = this.makeMemoString(args);
+                if (this.memoization[func])
+                    return this.memoization[func][key];
+                return undefined;
+            },
+
+            setMemoValue: function (func, args, val) {
+                if ("undefined" === typeof this.memoization[func])
+                    this.memoization[func] = [];
+
+                var key = this.makeMemoString(args);
+                this.memoization[func][key] = val;
+            },
+
+            clearMemoRow: function (func) {
+                if ("undefined" !== typeof this.memoization[func])
+                    this.memoization[func] = [];
+            },
+        };
+
+        // lex.js
+
+        /*
+         * lexer: tokenize input stream into lexemes list
+         */
+        function tequila_lex(input) {
+            var token_list = [];
+            var index = 0;
+
+            var ch;                     /* current character */
+
+            // private methods using RE
+            function isSpace(c) { return /\s/.test(c); }
+            function isDigit(c) { return /[\d\.]/.test(c); }
+            function isOp(c) { return /[\+\-\*\/\(\)\,\=\<\>\!\:\;\[\]\{\}]/.test(c); }
+            function isId(c) { return "string" === typeof c && !isOp(c) && !isSpace(c); }
+
+            // read a character once from stream buffer
+            function advance() { return ch = input[++index]; }
+            function addToken(t) { token_list.push(t); }
+            function isKeyWord(t) { return keywords.indexOf(t) >= 0; }
+
+            function getToken() {
+                if (index >= input.length)
+                    return null;
+
+                ch = input[index];      // getChar()
+                while (isSpace(ch))     // skip all whitespaces
+                    ch = advance();
+
+                if (isOp(ch)) {
+                    var ret = ch;
+                    var t = ch;
+
+                    advance();
+                    if (brackets.indexOf(t) >= 0)
+                        return { node: ret };
+                    // compound operator
+                    for (; ;) {
+                        t = input[index];
+                        if (suffix_ops.indexOf(t) < 0)
+                            break;
+                        ret += t;
+                        advance();
+                    }
+                    return { node: ret };
+                }
+
+                if (isDigit(ch)) {
+                    var num = ch;
+
+                    while (isDigit(advance(ch)))
+                        num += ch;
+                    num = parseFloat(num);
+                    if (!isFinite(num))
+                        throw "Number is too large or too small for a 64-bit floating-point.";
+                    return { node: "num", value: num };
+                }
+
+                // can be either variables or subroutines
+                if (isId(ch)) {
+                    var id = ch;
+
+                    while (isId(advance()))
+                        id += ch;
+
+                    // keywords is prior to user defined identifiers
+                    if (isKeyWord(id))
+                        return { node: id };
+                    return { node: "id", value: id };
+                }
+
+                throw "Unrecognized token.";
             }
-        }, {
-            greetings: 'Javascript Interpreter',
-            name: "Yogurt",
-            prompt: ">> ",
-            });
-    });
-});
 
-</script>
+            while (token = getToken())
+                addToken(token);
+
+            addToken({ node: "EOF" });           /* no more tokens */
+            console.log(JSON.stringify(token_list));
+            return token_list;
+        }
+
+        // parse.js
+
+        /*
+         * parser: construct a parse tree according to token list
+         */
+        function tequila_parse(token_list) {
+            var tokTable = {};      // ready to get referenced for all possible symbols
+
+            function getNextToken() { return token_list.shift(); }
+
+            // duplicate one from token list, deep cloning and register callbacks
+            function dupCurToken() {
+                var tok = token_list[0];
+
+                if (!tokTable[tok.node]) {
+                    throw "Unrecognised token \"" + tok.node + "\"";
+                }
+                var newTok = Object.create(tokTable[tok.node]); // nud, lbp, led
+                newTok.node = tok.node;
+                newTok.value = tok.value;
+                return newTok;
+            }
+
+            /*
+             * Top-down operator precedence parsing
+             * LR(1): shift-reduce
+             *
+             * @param rbp   right binding power
+             */
+            function expr(rbp) {
+                var tok = dupCurToken();
+
+                if (!tok.nud)
+                    throw "Unexpected token: " + tok.node;
+
+                getNextToken(); // eat id/number/prefix
+
+                var lhs = tok.nud(tok); // mostly simply return itself
+                while (rbp < dupCurToken().lbp) {
+                    tok = dupCurToken();
+                    getNextToken(); // eat infix
+                    if (!tok.led)
+                        throw "Unexpected token: " + tok.node;
+                    lhs = tok.led(lhs);
+                }
+                //console.log(lhs);
+                return lhs;
+            }
+
+            /*
+             * @brief http://javascript.crockford.com/tdop/tdop.html
+             * @param id Identifier
+             * @param nud Null denotative
+             * @param led Left denotative
+             */
+            function makeSymbol(id, nud, lbp, led) {
+                // register symbol table
+                var tok = tokTable[id] || {};
+                tokTable[id] = {
+                    nud: tok.nud || nud,
+                    lbp: tok.lbp || lbp,
+                    led: tok.led || led,
+                };
+            }
+
+            makeSymbol("if", function () {
+                var cond = expr(0);
+                if ("then" !== token_list[0].node)
+                    throw "Expected 'then' clause";
+                getNextToken(); // eat "then"
+
+                var conseq = expr(0);
+                if ("else" !== token_list[0].node)
+                    /*throw "Expected 'else' clause";*/
+                    return { "node": "branch", "cond": cond, "conseq": conseq };
+                getNextToken(); // eat "else"
+
+                var alt = expr(0);
+                return { "node": "branch", "cond": cond, "conseq": conseq, "alt": alt };
+            });
+            makeSymbol("then");
+            makeSymbol("else");
+
+
+            makeSymbol("(", function () {
+                var e = expr(0);
+
+                if (")" !== token_list[0].node)
+                    throw "Expected closing parenthesis ')'";
+                getNextToken(); // eat ")"
+                return e;
+            });
+            makeSymbol(")");
+            makeSymbol(",");
+            makeSymbol('{', function () {
+                var statements = [];
+
+                if ("}" !== token_list[0].node) {
+                    do
+                        statements.push(expr(0));
+                    while ("}" !== token_list[0].node);
+
+                    if ("}" !== token_list[0].node)
+                        throw "Unreachable statement";
+                }
+                getNextToken();     // eat "}"
+                //console.log(JSON.stringify(statements));
+                return { node: "block", stmts: statements };
+            });
+            makeSymbol('}');
+            makeSymbol("num", function (n) { return n; });
+            makeSymbol("id", function (name) {
+                if ("(" !== token_list[0].node) // variable reference
+                    return name;
+
+                var args = [];                  // function call
+
+                if (")" === token_list[1].node)
+                    getNextToken(); // eat ")" since no args
+                else {
+                    do {
+                        getNextToken(); // eat "(" and ","
+                        args.push(expr(0));
+                    } while ("," === token_list[0].node);
+                    if (")" !== token_list[0].node)
+                        throw "Expected closing parenthesis ')'";
+                }
+                getNextToken(); // move to new token ready to go
+                return { node: "call", args: args, name: name.value };
+            });
+            makeSymbol("EOF");
+
+            // wrappers
+            function prefix(id, rbp) {
+                makeSymbol(id, function () {
+                    return { node: id, rhs: expr(rbp) };
+                });
+            }
+            function infix(id, lbp, rbp, led) {
+                rbp = rbp || lbp;
+                makeSymbol(id, null, lbp, led || function (lhs) {
+                    return { node: id, lhs: lhs, rhs: expr(rbp) };
+                });
+            }
+
+            // install standard operators and set precedence, 1 is the lowest
+            prefix("+", 7);
+            prefix("-", 7);
+
+            infix("*", 6);
+            infix("/", 6);
+            infix("+", 5);
+            infix("-", 5);
+
+            infix("<", 4);
+            infix(">", 4);
+            infix("<=", 4);
+            infix(">=", 4);
+            infix("==", 4);
+            infix("!=", 4);
+
+            prefix("not", 3);
+            infix("and", 3);
+            infix("or", 3);
+
+            infix("=", 1, 2, function (lhs) {
+                // assignment to identifier
+                if ("id" === lhs.node) {
+                    return { node: "assign", name: lhs.value, value: expr(0) };
+                }
+                if ("call" === lhs.node) {
+                    // check whether each arg is valid
+                    for (var i = 0; i < lhs.args.length; ++i)
+                        if ("id" !== lhs.args[i].node)
+                            throw "Invalid argument name";
+                    return { node: "def", name: lhs.name, args: lhs.args, value: expr(0) };
+                }
+                throw "Invalid lvalue.";
+            });
+            infix(":=", 1, 2, function (lhs) {
+                var t;
+                var statement = [];
+
+                if ("id" === lhs.node) {
+                    if ("{" !== token_list[0].node)
+                        throw "Expected opening block '{'";
+                    getNextToken(); // eat "{"
+                    while ("}" !== token_list[0].node) {
+                        statement.push(expr(0));
+                        //getNextToken();
+                    }
+                    getNextToken();
+                }
+                //statement.push({node: "EOF"});
+                procedures[String(lhs.value)] = statement;
+                return { node: "proc", name: lhs.value };
+            });
+            //console.log( JSON.stringify(token_list) );
+            var parse_tree = [];
+
+            while ("EOF" !== token_list[0].node)
+                parse_tree.push(expr(0));
+            //console.log ( parse_tree.length );
+            console.log(JSON.stringify(parse_tree));
+            return parse_tree;
+        }
+
+        // eval.js
+
+        /*
+         * evaluate: iterate each parse node and do syntax analysis
+         */
+        function tequila_evaluate(parse_tree) {
+            var ops = {
+                // take the place of LHS with RHS when only RHS exists
+                "+": function (a, b) { return "undefined" === typeof b ? +a : a + b; },
+                "-": function (a, b) { return "undefined" === typeof b ? -a : a - b; },
+                "*": function (a, b) { return a * b; },
+                "/": function (a, b) { return a / b; },
+
+                ">": function (a, b) { return a > b; },
+                "<": function (a, b) { return a < b; },
+                ">=": function (a, b) { return a >= b; },
+                "<=": function (a, b) { return a <= b; },
+                "==": function (a, b) { return a == b; },
+                "!=": function (a, b) { return a != b; },
+
+                "not": function (a) { return "boolean" === typeof a ? !a : null; },
+                "and": function (a, b) {
+                    return "boolean" === typeof a && "boolean" === typeof b ? a && b : null;
+                },
+                "or": function (a, b) {
+                    return "boolean" === typeof a && "boolean" === typeof b ? a || b : null;
+                },
+            };
+
+            function _reduce(root, param, argum) {
+                if ("object" !== typeof root)
+                    return null;
+
+                if ("id" === root.node && param === root.value) {
+                    root.node = "num";
+                    root.value = argum;
+                }
+                for (child in root)
+                    _reduce(root[child], param, argum);
+            }
+
+            function parseTree(root) {
+                if ("num" === root.node) {
+                    return root.value;
+                }
+                else if ("id" === root.node) {
+                    // is it a constant value?
+                    if ("undefined" !== typeof constants[root.value])
+                        return constants[root.value];
+
+                    // another attempt at procedure
+                    var proc = procedures[root.value];
+
+                    if ("object" === typeof proc) {
+                        proc = dupObject(proc);
+                        console.log(JSON.stringify(proc));
+                        var rest = tequila_evaluate(proc);
+                        console.log(rest);
+                        return rest;
+                    }
+
+                    // may be a variable defined before
+                    var val = Scope.env()[root.value];
+
+                    if ("undefined" === typeof val)
+                        throw "Variable \"" + root.value + "\" is undefined!!!";
+                    return val;
+                }
+                else if (ops[root.node]) {
+                    if (root.lhs)       // if this is a binary operator
+                        return ops[root.node](parseTree(root.lhs), parseTree(root.rhs));
+                    else                // or it is a unary one, lhs is a nil
+                        return ops[root.node](parseTree(root.rhs));
+                }
+                else if ("assign" === root.node) {
+                    // constants cannot be re-defined
+                    if ("undefined" !== typeof constants[root.name])
+                        throw "Constant \"" + root.name + "\" has already been defined";
+                    // push a value bound to a name into the current environment
+                    return Scope.env()[root.name] = parseTree(root.value);
+                }
+                else if ("def" === root.node) {
+                    // clear previous definition
+                    Memo.clearMemoRow(root.name);
+                    // push a definition bound to a prototype into environment
+                    Scope.env()[root.name] = { "args": root.args, "defun": root.value };
+                }
+                else if ("call" === root.node) {
+                    // is it a function provided by us?
+                    if ("function" === typeof native_functions[root.name]) {
+                        for (var i = 0; i < root.args.length; ++i)
+                            root.args[i] = parseTree(root.args[i]);
+                        return native_functions[root.name].apply(null, root.args);
+                    }
+
+                    if ("undefined" === typeof Scope.env()[root.name])
+                        throw "Function \"" + root.name + "\" is undefined";
+
+                    var arg;
+                    var _args = [];
+                    var _proc = dupObject(Scope.env()[root.name].defun);
+
+                    for (var i = 0; i < root.args.length; ++i) {
+                        arg = parseTree(root.args[i]);
+                        _args.push(arg);
+                        _reduce(_proc, Scope.env()[root.name].args[i].value, arg);
+                    }
+
+                    // accelerate with memoization
+                    var ret = Memo.getMemoValue(root.name, _args);
+                    if ("undefined" !== typeof ret)
+                        return ret;
+
+                    ret = parseTree(_proc);
+                    Memo.setMemoValue(root.name, _args, ret);
+                    return ret;
+                }
+                else if ("branch" == root.node) {
+                    var c = parseTree(root.cond);
+
+                    if ("boolean" !== typeof c)
+                        throw "Expected a boolean expression.";
+                    if (c)
+                        return parseTree(root.conseq);
+                    else
+                        if (root.alt)
+                            return parseTree(root.alt);
+                }
+                else if ("block" === root.node) {
+                    var ss = root.stmts;
+
+                    Scope.push();   // enter block
+                    // iterate each statement and evaluate the node
+                    for (var i = 0; i < ss.length; ++i)
+                        output.push(String(parseTree(ss[i])));
+                    Scope.pop();    // exit block
+                    return;
+                }
+                return "nil";       // unhandled exception
+            }
+
+            // main process of evaluating parse node
+            var output = [];
+
+            for (var i = 0; i < parse_tree.length; ++i)
+                output.push(String(parseTree(parse_tree[i])));
+            return output;
+        }
+
+        const font = 'Slant';
+
+        figlet.defaults({ fontPath: 'https://cdn.jsdelivr.net/npm/figlet/fonts' });
+        figlet.preloadFonts([font], ready);
+
+        const formatter = new Intl.ListFormat('en', {
+            style: 'long',
+            type: 'conjunction',
+        });
+
+        const commands = {
+            echo(...args) {
+                this.echo(args.join(' '));
+            },
+            help() {
+                this.echo(`List of available commands: ${help}`);
+            },
+            yogurt() {
+                term.push(function (command, term) {
+                    try {
+                        console.time("ticks");
+                        var tmp, ret = [];
+
+                        var input_stream = command.trim();
+                        var token_list = tequila_lex(input_stream);
+                        var parse_tree = tequila_parse(token_list);
+                        var result_array = tequila_evaluate(parse_tree);
+                        console.log(JSON.stringify(result_array));
+                        while (tmp = result_array.shift())
+                            if ("undefined" !== tmp)
+                                ret.push(tmp);
+
+                        // only return the value evaluated from last statement
+                        term.echo("=> " + ret[ret.length - 1]);
+                        console.timeEnd("ticks");
+                    } catch (err) {
+                        term.error(String(err));
+                    }
+                }, {
+                    greetings: 'Javascript Interpreter',
+                    name: "Yogurt",
+                    prompt: ">> ",
+                });
+            }
+        };
+
+        const command_list = ['clear'].concat(Object.keys(commands));
+        const formatted_list = command_list.map(cmd => `<white class="command">${cmd}</white>`);
+        const help = formatter.format(formatted_list);
+
+        const term = $('body').terminal(commands, {
+            completion: true,
+            checkArity: true,
+            greetings: false
+        });
+
+        term.on('click', '.command', function () {
+            const command = $(this).text();
+            term.exec(command, { typing: true, delay: 50 });
+        });
+
+        function ready() {
+            const seed = rand(256);
+            term.echo(() => rainbow(render('Yogurt Interpreter'), seed)).resume();
+        }
+
+        function rainbow(string, seed) {
+            return lolcat.rainbow(function (char, color) {
+                char = $.terminal.escape_brackets(char);
+                return `[[;${hex(color)};]${char}]`;
+            }, string, seed).join('\n');
+        }
+
+        function rand(max) {
+            return Math.floor(Math.random() * (max + 1));
+        }
+
+        function render(text) {
+            const cols = term.cols();
+            return trim(figlet.textSync(text, {
+                font: font,
+                width: cols,
+                whitespaceBreak: true
+            }));
+        }
+
+        function trim(str) {
+            return str.replace(/[\n\s]+$/, '');
+        }
+
+        function hex(color) {
+            return '#' + [color.red, color.green, color.blue].map(n => {
+                return n.toString(16).padStart(2, '0');
+            }).join('');
+        }
+    </script>
 </body>
 
 </html>
