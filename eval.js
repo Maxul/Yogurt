@@ -129,16 +129,17 @@ function tequila_evaluate(parse_tree) {
                     argValues.push(parseTree(root.args[i]));
                 }
 
-                var memoKey = Memo.makeMemoString(argValues);
-
                 Scope.push();
-
                 for (var i = 0; i < funcDef.params.length; ++i) {
                     var paramName = funcDef.params[i];
                     Scope.env()[paramName] = argValues[i];
                 }
-
-                var result = parseTree(funcDef.body);
+                // accelerate with memoization
+                var result = Memo.getMemoValue(root.name, root.args);
+                if ("undefined" !== typeof result)
+                    return result;
+                result = parseTree(funcDef.body);
+                Memo.setMemoValue(root.name, root.args, result);
                 Scope.pop();
                 return result;
             case "loop_for":
