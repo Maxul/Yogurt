@@ -9,9 +9,6 @@ const formatter = new Intl.ListFormat('en', {
 });
 
 const commands = {
-    echo(...args) {
-        this.echo(args.join(' '));
-    },
     help() {
         this.echo(`List of available commands: ${help}`);
     },
@@ -35,7 +32,7 @@ const commands = {
             }
         }, { prompt: "chat> ", name: "chat", onExit: () => { this.echo("Exited chat mode."); }});
     },
-    repl() {
+    code() {
         term.push(async function (command, term) {
             const cmd = command.trim();
             if (!cmd) return;
@@ -64,7 +61,6 @@ const help = formatter.format(formatted_list);
 
 const term = $('body').terminal(commands, {
     completion: true,
-    checkArity: false,
     greetings: 'Tequila: Yet Another Interpreter'
 });
 
