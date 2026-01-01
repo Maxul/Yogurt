@@ -9,10 +9,10 @@ function tequila_lex(input) {
     let ch; // current character
 
     // private methods using regular expressions
-    const isSpace = c => /\s/.test(c);
-    const isDigit = c => /[\d\.]/.test(c);
-    const isOp = c => /[\+\-\*\/\(\)\,\=\<\>\!\:\;\[\]\{\}]/.test(c);
-    const isId = c => typeof c === "string" && !isOp(c) && !isSpace(c);
+    const isSpace = ch => /\s/.test(ch);
+    const isDigit = ch => /[\d\.]/.test(ch);
+    const isOp = ch => /[\+\-\*\/\(\)\,\=\<\>\!\:\;\[\]\{\}]/.test(ch);
+    const isId = ch => typeof ch === "string" && !isOp(ch) && !isSpace(ch);
 
     // read a character once from stream buffer
     const advance = () => ch = input[++index];
@@ -26,10 +26,9 @@ function tequila_lex(input) {
                 ch = advance();
             } else if (ch === '#') { // skip comments beginning with "#"
                 while (index < input.length && input[index] !== '\n') {
-                    index++; 
+                    index++;
                 }
-                
-                ch = input[index]; 
+                ch = input[index];
             } else {
                 break;
             }
