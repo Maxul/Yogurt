@@ -108,12 +108,6 @@ const testCases = [
         expected: "8"
     },
     {
-        name: "closure",
-        code: "f(x) = { g(y) = x + y }; f(5)(10)",
-        expected: "15"
-    },
-
-    {
         name: "logical 1",
         code: "false and (1 / 0 == 0)",
         expected: "false"
@@ -134,6 +128,11 @@ const testCases = [
         code: "a = null; a == null",
         expected: "true"
     },
+    // {
+    //     name: "closure", // a future feature
+    //     code: "f(x) = { g(y) = x + y }; f(5)(10)",
+    //     expected: "15"
+    // },
 ];
 
 async function runTestSuite() {

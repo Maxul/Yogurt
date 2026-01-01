@@ -1,8 +1,7 @@
 // memo.js
 
 /** 
- * Since functions are pure, we use memoization
- *              to cache their computed results
+ * Since functions are pure, we use memoization to cache their computed results
 */
 
 const Memo = {
