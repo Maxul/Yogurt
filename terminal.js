@@ -9,6 +9,26 @@ const formatter = new Intl.ListFormat('en', {
 });
 
 const commands = {
+    chat() {
+        this.push(async function (message) {
+            const msg = message.trim();
+            if (!msg) return;
+            this.pause();
+            try {
+                const result = await llm_call(msg);
+                try {
+                    const jsonResponse = JSON.parse(result);
+                    this.echo(`[[b;green;]LLM:] ${jsonResponse.reply || JSON.stringify(jsonResponse, null, 2)}`);
+                } catch (e) {
+                    this.echo(`[[b;green;]LLM:] ${result}`);
+                }
+            } catch (err) {
+                this.error("LLM Call Failed: " + err.message);
+            } finally {
+                this.resume();
+            }
+        }, { prompt: "chat> ", name: "chat", onExit: () => { this.echo("Exited chat mode."); }});
+    },
     echo(...args) {
         this.echo(args.join(' '));
     },
@@ -41,7 +61,7 @@ const help = formatter.format(formatted_list);
 
 const term = $('body').terminal(commands, {
     completion: true,
-    checkArity: true,
+    checkArity: false,
     greetings: 'Tequila: Yet Another Interpreter'
 });
 

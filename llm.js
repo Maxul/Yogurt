@@ -15,6 +15,10 @@ async function llm_call(prompt) {
     const url = "https://api.groq.com/openai/v1/chat/completions";
     const model = "llama-3.1-8b-instant";
     const apiKey = apiKeyInput.value;
+    if (!apiKey) {
+        alert("API Key is missing! Please input it in the header.");
+    }
+
     const response = await fetch(url, {
         method: 'POST',
         headers: {
