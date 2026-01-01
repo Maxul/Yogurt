@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Yet Another Functional Programming Interpreter</title>
     <script src="https://cdn.jsdelivr.net/npm/jquery"></script>
     <script src="https://cdn.jsdelivr.net/gh/jcubic/static/js/wcwidth.js"></script>
@@ -31,11 +32,47 @@
                 --size: 1.4;
             }
         }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background-color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .config-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="password"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 250px;
+        }
     </style>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 </head>
 
 <body>
+    <header>
+        <strong>Programming Powered By LLM Models</strong>
+        <div class="config-area">
+            <input type="password" id="apiKey" placeholder="Input Your LLM API Key Here..." />
+        </div>
+    </header>
+    <script src="llm.js"></script>
     <script src="utils.js"></script>
     <script src="scope.js"></script>
     <script src="memo.js"></script>

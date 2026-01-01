@@ -43,7 +43,6 @@ function tequila_parse(token_list) {
                 throw "Unexpected token: " + tok.node;
             lhs = tok.led(lhs);
         }
-        //console.log(lhs);
         return lhs;
     }
 
@@ -62,10 +61,6 @@ function tequila_parse(token_list) {
             led: tok.led || led,
         };
     }
-
-    makeSymbol("string", function (n) {
-        return { node: "string", value: n.value };
-    });
 
     makeSymbol(",");
     makeSymbol(";");
@@ -86,7 +81,7 @@ function tequila_parse(token_list) {
         if (token_list[0].node !== "]")
             throw "Expected closing bracket ']'";
         getNextToken(); // eat "]"
-        return { "node": "array", "elements": elems };
+        return { node: "array", elements: elems };
     });
     makeSymbol("]");
 
@@ -106,10 +101,10 @@ function tequila_parse(token_list) {
             var body = expr(0);
 
             return {
-                "node": "loop_for_in",
-                "iterator": init.lhs,   // "n"
-                "collection": init.rhs, // "nums"
-                "body": body
+                node: "loop_for_in",
+                iterator: init.lhs,   // "n"
+                collection: init.rhs, // "nums"
+                body: body
             };
         }
 
@@ -132,19 +127,13 @@ function tequila_parse(token_list) {
 
         var body = expr(0);
 
-        return {
-            "node": "loop_for",
-            "init": init,
-            "cond": cond,
-            "step": step,
-            "body": body
-        };
+        return { node: "loop_for", init: init, cond: cond, step: step, body: body };
     });
 
     makeSymbol("while", function () {
         var cond = expr(0);
         var body = expr(0);
-        return { "node": "loop_while", "cond": cond, "body": body };
+        return { node: "loop_while", cond: cond, body: body };
     });
 
     makeSymbol("if", function () {
@@ -239,6 +228,7 @@ function tequila_parse(token_list) {
     });
     makeSymbol('}');
     makeSymbol("number", function (n) { return n; });
+    makeSymbol("string", function (n) { return n; });
     makeSymbol("id", function (name) {
         if ("(" !== token_list[0].node) // variable reference
             return name;
@@ -257,6 +247,16 @@ function tequila_parse(token_list) {
         }
         getNextToken(); // move to new token ready to go
         return { node: "call", args: args, name: name.value };
+    });
+    makeSymbol("using");
+    makeSymbol("llm", function () {
+        let prompt = getNextToken().value;
+        let context = [];
+        if (token_list[0].node === "using") {
+            getNextToken(); // eat "using"
+            context = expr(0);
+        }
+        return { node: "llm_call", prompt: prompt, context: context };
     });
     makeSymbol("EOF");
 
@@ -338,7 +338,7 @@ function tequila_parse(token_list) {
         var body = expr(0);
         return { node: "proc_def", name: name, params: params, body: body };
     });
-    console.log(JSON.stringify(token_list));
+    // console.log(JSON.stringify(token_list));
     var parse_tree = [];
 
     while ("EOF" !== token_list[0].node) {
@@ -348,7 +348,7 @@ function tequila_parse(token_list) {
         }
         parse_tree.push(expr(0));
     }
-    console.log(parse_tree.length);
-    console.log(JSON.stringify(parse_tree));
+    // console.log(parse_tree.length);
+    // console.log(JSON.stringify(parse_tree));
     return parse_tree;
 }

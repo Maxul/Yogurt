@@ -81,5 +81,6 @@ function tequila_lex(input) {
     let token;
     while (token = getToken()) token_list.push(token);
     token_list.push({ node: "EOF" }); // no more tokens
+    // console.log(JSON.stringify(token_list));
     return token_list;
 }

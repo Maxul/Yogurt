@@ -1,8 +1,8 @@
 // eval.js
 
 /*
- * evaluate: iterate each parse node and do syntax analysis
- */
+* evaluate: iterate each parse node and do syntax analysis
+*/
 function tequila_evaluate(parse_tree) {
     // take the place of LHS with RHS when only RHS exists
     const ops = {
@@ -34,10 +34,10 @@ function tequila_evaluate(parse_tree) {
                 // is it a constant value?
                 if ("undefined" !== typeof constants[root.value])
                     return constants[root.value];
-
+    
                 // may be a variable defined before
                 var val = Scope.env()[root.value];
-
+    
                 if ("undefined" === typeof val)
                     throw "Variable \"" + root.value + "\" is undefined";
                 return val;
@@ -45,15 +45,15 @@ function tequila_evaluate(parse_tree) {
                 // constants cannot be re-defined
                 if ("undefined" !== typeof constants[root.name])
                     throw "Constant \"" + root.name + "\" has already been defined";
-
+    
                 // push a value bound to a name into the current environment
                 var val = parseTree(root.value);
                 var currentScope = Scope.env();
-
+    
                 // use parent's if it exists, otherwise define locally
                 var scopeCursor = currentScope;
                 var found = false;
-
+    
                 while (scopeCursor && scopeCursor !== Object.prototype) {
                     if (Object.prototype.hasOwnProperty.call(scopeCursor, root.name)) {
                         scopeCursor[root.name] = val;
@@ -62,15 +62,15 @@ function tequila_evaluate(parse_tree) {
                     }
                     scopeCursor = Object.getPrototypeOf(scopeCursor);
                 }
-
+    
                 if (!found) {
                     currentScope[root.name] = val; // a locally new variable
                 }
-
+    
                 return val;
             case "branch":
                 var cond = parseTree(root.cond);
-
+    
                 if ("boolean" !== typeof cond)
                     throw "Expected a boolean expression.";
                 if (cond)
@@ -80,7 +80,7 @@ function tequila_evaluate(parse_tree) {
                         return parseTree(root.alt);
             case "block":
                 var ss = root.stmts;
-
+    
                 Scope.push();   // enter block
                 // iterate each statement and evaluate the node
                 var result = null;
@@ -96,7 +96,7 @@ function tequila_evaluate(parse_tree) {
                 for (var i = 0; i < root.args.length; i++) {
                     paramNames.push(root.args[i].value);
                 }
-
+    
                 Scope.env()[root.name] = {
                     type: "func",
                     params: paramNames,
@@ -114,21 +114,21 @@ function tequila_evaluate(parse_tree) {
                         nativeArgs.push(parseTree(root.args[i]));
                     return native_functions[root.name].apply(null, nativeArgs);
                 }
-
+    
                 var funcDef = Scope.env()[root.name];
                 if ("undefined" === typeof funcDef)
                     throw "Function \"" + root.name + "\" is undefined";
-
+    
                 if (root.args.length !== funcDef.params.length) {
                     throw "Function '" + root.name + "' expects " +
                     funcDef.params.length + " arguments, got " + root.args.length;
                 }
-
+    
                 var argValues = [];
                 for (var i = 0; i < root.args.length; ++i) {
                     argValues.push(parseTree(root.args[i]));
                 }
-
+    
                 Scope.push();
                 for (var i = 0; i < funcDef.params.length; ++i) {
                     var paramName = funcDef.params[i];
@@ -156,9 +156,9 @@ function tequila_evaluate(parse_tree) {
                 return lastResult;
             case "loop_for_in":
                 var collection = parseTree(root.collection);
-
+    
                 if (!Array.isArray(collection)) throw "For-in loop expects an array.";
-
+    
                 Scope.push();
                 var lastResult = null;
                 var varName = root.iterator.value;
@@ -168,7 +168,7 @@ function tequila_evaluate(parse_tree) {
                 }
                 Scope.pop();
                 return lastResult;
-
+    
             case "loop_while":
                 Scope.push();
                 var ret = null;
@@ -177,7 +177,7 @@ function tequila_evaluate(parse_tree) {
                 }
                 Scope.pop();
                 return ret;
-
+    
             case "array":
             case "tuple":
                 var result = [];
@@ -185,33 +185,40 @@ function tequila_evaluate(parse_tree) {
                     result.push(parseTree(root.elements[i]));
                 }
                 return result;
-
+    
             case "dict":
                 var res = {};
                 for (var i = 0; i < root.pairs.length; ++i) {
                     var pair = root.pairs[i];
                     var keyRaw = pair.key;
                     var keyName;
-
+    
                     if (keyRaw.node === "id") keyName = keyRaw.value;
                     else if (keyRaw.node === "num") keyName = keyRaw.value;
                     else if (keyRaw.node === "string") keyName = keyRaw.value;
                     else keyName = parseTree(keyRaw);
-
+    
                     var val = parseTree(pair.val);
                     res[keyName] = val;
                 }
                 return res;
-
+    
             case "index":
                 // obj[key]
                 var target = parseTree(root.target);
                 var idx = parseTree(root.index);
-
+    
                 if (target === undefined || target === null)
                     throw "Cannot index null or undefined";
-
+    
                 return target[idx];
+    
+            case "llm_call":
+                const prompt = root.prompt;
+                const context = root.context ? parseTree(root.context) : null;
+                const llmResult = llm_call(prompt + JSON.stringify(context));
+                return llmResult;
+    
             default:
                 if (ops[root.node]) {
                     const left = root.lhs ? parseTree(root.lhs) : undefined;
@@ -224,8 +231,8 @@ function tequila_evaluate(parse_tree) {
                     return "nil";       // unhandled exception
                 }
         }
-        
     }
+
     // main process of evaluating parse node
     var output = [];
 
