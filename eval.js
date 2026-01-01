@@ -22,225 +22,240 @@ async function tequila_evaluate(parse_tree) {
         "in": (a, b) => Array.isArray(b) ? b.includes(a) : (b && typeof b === 'object' ? a in b : false)
     };
 
+    // dispatcher lookup table
+    const evaluators = {
+        "number": async (node) => node.value,
+        "string": async (node) => node.value,
+
+        "id": async (node) => {
+            // is it a constant value?
+            if ("undefined" !== typeof constants[node.value])
+                return constants[node.value];
+
+            // may be a variable defined before
+            var val = Scope.env()[node.value];
+            if ("undefined" === typeof val)
+                throw "Variable \"" + node.value + "\" is undefined";
+            return val;
+        },
+
+        "assign": async (node, parseTree) => {
+            // constants cannot be re-defined
+            if ("undefined" !== typeof constants[node.name])
+                throw "Constant \"" + node.name + "\" has already been defined";
+
+            var val = await parseTree(node.value);
+            var currentScope = Scope.env();
+
+            // use parent's if it exists, otherwise define locally (lexical shadowing check)
+            var scopeCursor = currentScope;
+            var found = false;
+            while (scopeCursor && scopeCursor !== Object.prototype) {
+                if (Object.prototype.hasOwnProperty.call(scopeCursor, node.name)) {
+                    scopeCursor[node.name] = val;
+                    found = true;
+                    break;
+                }
+                scopeCursor = Object.getPrototypeOf(scopeCursor);
+            }
+            if (!found) {
+                currentScope[node.name] = val; // a locally new variable
+            }
+            return val;
+        },
+
+        "branch": async (node, parseTree) => {
+            var cond = await parseTree(node.cond);
+            if ("boolean" !== typeof cond)
+                throw "Expected a boolean expression.";
+            if (cond)
+                return await parseTree(node.conseq);
+            else if (node.alt)
+                return await parseTree(node.alt);
+            return null;
+        },
+
+        "block": async (node, parseTree) => {
+            var ss = node.stmts;
+            Scope.push();   // enter block
+            var result = null;
+            for (var i = 0; i < ss.length; ++i)
+                result = await parseTree(ss[i]);
+            Scope.pop();    // exit block
+            return result;
+        },
+
+        "func_def": async (node) => {
+            Memo.clearMemoRow(node.name);
+            var paramNames = node.args.map(arg => arg.value);
+            Scope.env()[node.name] = {
+                type: "func",
+                params: paramNames,
+                body: node.value,
+                closure_env: Scope.env() // capture environment for closure
+            };
+            return "Function " + node.name + "() is defined";
+        },
+
+        "proc_def": async (node) => {
+            Scope.env()[node.name] = { type: "proc", params: node.params, body: node.body };
+            return "Procedure " + node.name + "() is defined";
+        },
+
+        "call": async (node, parseTree) => {
+            // is it a native function?
+            if ("function" === typeof native_functions[node.name]) {
+                var nativeArgs = [];
+                for (var i = 0; i < node.args.length; ++i)
+                    nativeArgs.push(await parseTree(node.args[i]));
+                return native_functions[node.name].apply(null, nativeArgs);
+            }
+
+            var funcDef = Scope.env()[node.name];
+            if ("undefined" === typeof funcDef)
+                throw "Function \"" + node.name + "\" is undefined";
+
+            if (node.args.length !== funcDef.params.length) {
+                throw "Function '" + node.name + "' expects " +
+                funcDef.params.length + " arguments, got " + node.args.length;
+            }
+
+            // evaluate arguments in the current scope
+            var argValues = [];
+            for (var i = 0; i < node.args.length; ++i) {
+                argValues.push(await parseTree(node.args[i]));
+            }
+
+            // accelerate with memoization (use evaluated values as key)
+            var result = Memo.getMemoValue(node.name, argValues);
+            if ("undefined" !== typeof result) return result;
+
+            // push the function's captured environment
+            Scope.push(funcDef.closure_env);
+            for (var i = 0; i < funcDef.params.length; ++i) {
+                Scope.env()[funcDef.params[i]] = argValues[i];
+            }
+
+            result = await parseTree(funcDef.body);
+            Memo.setMemoValue(node.name, argValues, result); // store result in memo
+            Scope.pop();
+            return result;
+        },
+
+        "loop_for": async (node, parseTree) => {
+            Scope.push();
+            await parseTree(node.init);
+            var lastResult = null;
+            while (await parseTree(node.cond)) {
+                lastResult = await parseTree(node.body);
+                await parseTree(node.step);
+            }
+            Scope.pop();
+            return lastResult;
+        },
+
+        "loop_for_in": async (node, parseTree) => {
+            var collection = await parseTree(node.collection);
+            if (!Array.isArray(collection)) throw "For-in loop expects an array.";
+
+            Scope.push(); // shared scope for the loop
+            var lastResult = null;
+            var varName = node.iterator.value;
+            for (var i = 0; i < collection.length; i++) {
+                Scope.env()[varName] = collection[i];
+                // execute block statements without creating additional nested scopes
+                if (node.body.node === "block") {
+                    for (var s = 0; s < node.body.stmts.length; s++) {
+                        lastResult = await parseTree(node.body.stmts[s]);
+                    }
+                } else {
+                    lastResult = await parseTree(node.body);
+                }
+            }
+            Scope.pop();
+            return lastResult;
+        },
+
+        "loop_while": async (node, parseTree) => {
+            Scope.push();
+            var ret = null;
+            while (await parseTree(node.cond)) {
+                ret = await parseTree(node.body);
+            }
+            Scope.pop();
+            return ret;
+        },
+
+        "array": async (node, parseTree) => {
+            var result = [];
+            for (var i = 0; i < node.elements.length; ++i)
+                result.push(await parseTree(node.elements[i]));
+            return result;
+        },
+
+        "tuple": async (node, parseTree) => {
+            var result = [];
+            for (var i = 0; i < node.elements.length; ++i)
+                result.push(await parseTree(node.elements[i]));
+            return result;
+        },
+
+        "dict": async (node, parseTree) => {
+            var res = {};
+            for (var i = 0; i < node.pairs.length; ++i) {
+                var pair = node.pairs[i];
+                var keyName = (pair.key.node === "id" || pair.key.node === "number" || pair.key.node === "string")
+                    ? pair.key.value
+                    : await parseTree(pair.key);
+                res[keyName] = await parseTree(pair.val);
+            }
+            return res;
+        },
+
+        "index": async (node, parseTree) => {
+            var target = await parseTree(node.target);
+            var idx = await parseTree(node.index);
+            if (target === undefined || target === null)
+                throw "Cannot index null or undefined";
+            return target[idx];
+        },
+
+        "llm_call": async (node, parseTree) => {
+            const prompt = node.prompt;
+            const context = node.context ? await parseTree(node.context) : null;
+            const llmRawResult = await llm_call(prompt + JSON.stringify(context));
+            try {
+                // Try to parse LLM result as data
+                return JSON.parse(llmRawResult);
+            } catch (e) {
+                console.warn("LLM result is not valid JSON, returning as string.");
+                return llmRawResult;
+            }
+        }
+    };
+
     async function parseTree(root) {
         if (root === null || typeof root !== "object") {
             return root;
         }
-        switch (root.node) {
-            case "number":
-            case "string":
-                return root.value;
-            case "id":
-                // is it a constant value?
-                if ("undefined" !== typeof constants[root.value])
-                    return constants[root.value];
 
-                // may be a variable defined before
-                var val = Scope.env()[root.value];
-
-                if ("undefined" === typeof val)
-                    throw "Variable \"" + root.value + "\" is undefined";
-                return val;
-            case "assign":
-                // constants cannot be re-defined
-                if ("undefined" !== typeof constants[root.name])
-                    throw "Constant \"" + root.name + "\" has already been defined";
-
-                // push a value bound to a name into the current environment
-                var val = await parseTree(root.value);
-                var currentScope = Scope.env();
-
-                // use parent's if it exists, otherwise define locally
-                var scopeCursor = currentScope;
-                var found = false;
-
-                while (scopeCursor && scopeCursor !== Object.prototype) {
-                    if (Object.prototype.hasOwnProperty.call(scopeCursor, root.name)) {
-                        scopeCursor[root.name] = val;
-                        found = true;
-                        break;
-                    }
-                    scopeCursor = Object.getPrototypeOf(scopeCursor);
-                }
-
-                if (!found) {
-                    currentScope[root.name] = val; // a locally new variable
-                }
-
-                return val;
-            case "branch":
-                var cond = await parseTree(root.cond);
-
-                if ("boolean" !== typeof cond)
-                    throw "Expected a boolean expression.";
-                if (cond)
-                    return await parseTree(root.conseq);
-                else
-                    if (root.alt)
-                        return await parseTree(root.alt);
-            case "block":
-                var ss = root.stmts;
-
-                Scope.push();   // enter block
-                // iterate each statement and evaluate the node
-                var result = null;
-                for (var i = 0; i < ss.length; ++i)
-                    result = await parseTree(ss[i]);
-                Scope.pop();    // exit block
-                return result;
-            case "func_def":
-                // clear previous definition
-                Memo.clearMemoRow(root.name);
-                // push a definition bound to a prototype into environment
-                var paramNames = root.args.map(arg => arg.value);
-                Scope.env()[root.name] = {
-                    type: "func",
-                    params: paramNames,
-                    body: root.value,
-                    closure_env: Scope.env() // closure
-                };
-                return "Function " + root.name + "() is defined";
-            case "proc_def":
-                Scope.env()[root.name] = { type: "proc", params: root.params, body: root.body };
-                return "Procedure " + root.name + "() is defined";
-            case "call":
-                // is it a function provided by us?
-                if ("function" === typeof native_functions[root.name]) {
-                    var nativeArgs = [];
-                    for (var i = 0; i < root.args.length; ++i)
-                        nativeArgs.push(await parseTree(root.args[i]));
-                    return native_functions[root.name].apply(null, nativeArgs);
-                }
-
-                var funcDef = Scope.env()[root.name];
-                if ("undefined" === typeof funcDef)
-                    throw "Function \"" + root.name + "\" is undefined";
-
-                if (root.args.length !== funcDef.params.length) {
-                    throw "Function '" + root.name + "' expects " +
-                    funcDef.params.length + " arguments, got " + root.args.length;
-                }
-
-                var argValues = [];
-                for (var i = 0; i < root.args.length; ++i) {
-                    argValues.push(await parseTree(root.args[i]));
-                }
-
-                Scope.push(funcDef.closure_env);
-                for (var i = 0; i < funcDef.params.length; ++i) {
-                    var paramName = funcDef.params[i];
-                    Scope.env()[paramName] = argValues[i];
-                }
-                // accelerate with memoization
-                var result = Memo.getMemoValue(root.name, argValues);
-                if ("undefined" !== typeof result)
-                    return result;
-                result = await parseTree(funcDef.body);
-                Memo.setMemoValue(root.name, root.args, result);
-                Scope.pop();
-                return result;
-            case "loop_for":
-                Scope.push();
-                await parseTree(root.init);
-                var lastResult = null;
-                while (true) {
-                    var condition = await parseTree(root.cond);
-                    if (!condition) break;
-                    lastResult = await parseTree(root.body);
-                    await parseTree(root.step);
-                }
-                Scope.pop();
-                return lastResult;
-            case "loop_for_in":
-                var collection = await parseTree(root.collection);
-                if (!Array.isArray(collection)) throw "For-in loop expects an array.";
-
-                Scope.push();
-                var lastResult = null;
-                var varName = root.iterator.value;
-                for (var i = 0; i < collection.length; i++) {
-                    Scope.env()[varName] = collection[i];
-                    if (root.body.node === "block") {
-                        for (var s = 0; s < root.body.stmts.length; s++) {
-                            lastResult = await parseTree(root.body.stmts[s]);
-                        }
-                    } else {
-                        lastResult = await parseTree(root.body);
-                    }
-                }
-                Scope.pop();
-                return lastResult;
-
-            case "loop_while":
-                Scope.push();
-                var ret = null;
-                while (await parseTree(root.cond)) {
-                    ret = await parseTree(root.body);
-                }
-                Scope.pop();
-                return ret;
-
-            case "array":
-            case "tuple":
-                var result = [];
-                for (var i = 0; i < root.elements.length; ++i) {
-                    result.push(await parseTree(root.elements[i]));
-                }
-                return result;
-
-            case "dict":
-                var res = {};
-                for (var i = 0; i < root.pairs.length; ++i) {
-                    var pair = root.pairs[i];
-                    var keyRaw = pair.key;
-                    var keyName;
-
-                    if (keyRaw.node === "id") keyName = keyRaw.value;
-                    else if (keyRaw.node === "num") keyName = keyRaw.value;
-                    else if (keyRaw.node === "string") keyName = keyRaw.value;
-                    else keyName = await parseTree(keyRaw);
-
-                    var val = await parseTree(pair.val);
-                    res[keyName] = val;
-                }
-                return res;
-
-            case "index":
-                // obj[key]
-                var target = await parseTree(root.target);
-                var idx = await parseTree(root.index);
-
-                if (target === undefined || target === null)
-                    throw "Cannot index null or undefined";
-
-                return target[idx];
-
-            case "llm_call":
-                const prompt = root.prompt;
-                const context = root.context ? await parseTree(root.context) : null;
-                const llmRawResult = await llm_call(prompt + JSON.stringify(context));
-                try {
-                    return JSON.parse(llmRawResult);
-                } catch (e) {
-                    console.warn("LLM result is not valid JSON, returning as string.");
-                    return llmRawResult;
-                }
-
-            default:
-                if (ops[root.node]) {
-                    const right = await parseTree(root.rhs); // all ops have rhs
-                    if (root.lhs !== undefined && root.lhs !== null) {
-                        const left = await parseTree(root.lhs); // binary
-                        // for numerics and strings
-                        if (root.node === "+") return left + right;
-                        return ops[root.node](left, right);
-                    } else {
-                        return ops[root.node](right); // unary
-                    }
-                } else {
-                    return "nil";       // unhandled exception
-                }
+        const evaluator = evaluators[root.node];
+        if (evaluator) {
+            return await evaluator(root, parseTree);
         }
+
+        if (ops[root.node]) {
+            const right = await parseTree(root.rhs); // all ops have rhs
+            if (root.lhs !== undefined && root.lhs !== null) {
+                const left = await parseTree(root.lhs); // binary operation
+                if (root.node === "+") return left + right; // string concat or numeric add
+                return ops[root.node](left, right);
+            } else {
+                return ops[root.node](right); // unary operation (not, unary minus)
+            }
+        }
+
+        return "nil"; // unhandled node
     }
 
     // main process of evaluating parse node
