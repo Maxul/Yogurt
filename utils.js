@@ -7,7 +7,7 @@ const keywords = [
     "if", "then", "else", // branch
     "not", "and", "or",   // logical
     "while", "for", "in", // loop
-    "llm", "using",
+    "llm", "on",
 ];
 
 const constants = {

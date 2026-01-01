@@ -172,9 +172,10 @@ Nope. We hope you **enjoy** it!
 >> info["version"]
 => 1
 
-# JSON
+# JSON and NPL programming
 >> students = [{"name": "Alice", "age": 16}, {"name": "Bob", "age": 22}];
 => [object Object],[object Object]
 >> students[0]["age"]
 => 16
+>> adults = llm "筛选出成年人" on students
 ```

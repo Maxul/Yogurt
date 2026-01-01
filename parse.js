@@ -248,12 +248,12 @@ function tequila_parse(token_list) {
         getNextToken(); // move to new token ready to go
         return { node: "call", args: args, name: name.value };
     });
-    makeSymbol("using");
+    makeSymbol("on");
     makeSymbol("llm", function () {
         let prompt = getNextToken().value;
         let context = [];
-        if (token_list[0].node === "using") {
-            getNextToken(); // eat "using"
+        if (token_list[0].node === "on") {
+            getNextToken(); // eat "on"
             context = expr(0);
         }
         return { node: "llm_call", prompt: prompt, context: context };
