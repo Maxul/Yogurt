@@ -238,7 +238,7 @@ function tequila_parse(token_list) {
         return { node: "block", stmts: statements };
     });
     makeSymbol('}');
-    makeSymbol("num", function (n) { return n; });
+    makeSymbol("number", function (n) { return n; });
     makeSymbol("id", function (name) {
         if ("(" !== token_list[0].node) // variable reference
             return name;

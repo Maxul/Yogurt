@@ -66,7 +66,7 @@ function tequila_lex(input) {
             while (isDigit(advance())) numStr += ch;
             const num = parseFloat(numStr);
             if (!isFinite(num)) throw "Number overflow/underflow";
-            return { node: "num", value: num };
+            return { node: "number", value: num };
         }
 
         // can be either variables, functions, or procedures
