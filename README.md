@@ -171,4 +171,10 @@ Nope. We hope you **enjoy** it!
 => script
 >> info["version"]
 => 1
+
+# JSON
+>> students = [{"name": "Alice", "age": 16}, {"name": "Bob", "age": 22}];
+=> [object Object],[object Object]
+>> students[0]["age"]
+=> 16
 ```
