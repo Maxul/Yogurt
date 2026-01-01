@@ -1,7 +1,5 @@
 // scope.js
 
-const deepcopy = o => JSON.parse(JSON.stringify(o));
-
 const Scope = {
     env_stack: [{}],
     depth: 0,
@@ -9,7 +7,7 @@ const Scope = {
     env() { return this.env_stack[this.depth]; },
 
     push() {
-        const new_scope = deepcopy(this.env_stack[this.depth]);
+        const new_scope = Object.create(this.env_stack[this.depth]);
         this.env_stack.push(new_scope);
         this.depth++;
     },

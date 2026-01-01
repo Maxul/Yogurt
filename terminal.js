@@ -9,6 +9,12 @@ const formatter = new Intl.ListFormat('en', {
 });
 
 const commands = {
+    echo(...args) {
+        this.echo(args.join(' '));
+    },
+    help() {
+        this.echo(`List of available commands: ${help}`);
+    },
     chat() {
         this.push(async function (message) {
             const msg = message.trim();
@@ -29,29 +35,26 @@ const commands = {
             }
         }, { prompt: "chat> ", name: "chat", onExit: () => { this.echo("Exited chat mode."); }});
     },
-    echo(...args) {
-        this.echo(args.join(' '));
-    },
-    help() {
-        this.echo(`List of available commands: ${help}`);
-    },
     repl() {
-        term.push(function (command, term) {
+        term.push(async function (command, term) {
             const cmd = command.trim();
             if (!cmd) return;
+            this.pause();
             try {
                 console.time("ticks");
                 const tokens = tequila_lex(command.trim());
                 const tree = tequila_parse(tokens);
-                const results = tequila_evaluate(tree).filter(r => r !== "undefined");
+                const results = await tequila_evaluate(tree);
                 if (results.length > 0) {
                     term.echo(`=> ${results[results.length - 1]}`);
                 }
                 console.timeEnd("ticks");
             } catch (err) {
                 term.error(String(err));
+            } finally {
+                this.resume();
             }
-        }, { prompt: ">> ", });
+        }, { prompt: ">> ", name: "Tequila" });
     }
 };
 

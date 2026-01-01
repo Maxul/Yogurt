@@ -28,7 +28,7 @@ async function llm_call(prompt) {
         body: JSON.stringify({
             model: model,
             messages: [{ role: "user", content: prompt + " (output JSON only)" }],
-            temperature: 1,
+            temperature: 0.1,
             max_completion_tokens: 1024,
             top_p: 1,
             stream: false,
@@ -38,6 +38,6 @@ async function llm_call(prompt) {
     });
     const data = await response.json();
     result = data.choices[0].message.content;
-    console.log(JSON.stringify(result));
+    // console.log(JSON.stringify(result));
     return result;
 }

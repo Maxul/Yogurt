@@ -98,6 +98,7 @@ Nope. We hope you **enjoy** it!
     + Add support for *for* and *while*.
     + Add support for arrays, list, dict.
     + Add support for pure functions and imperative procedures.
+    + Add support for LLM-based hybrid programming (combined with natural language).
 
 ### Guide Book
 
@@ -114,11 +115,7 @@ Nope. We hope you **enjoy** it!
 >> greeting = "Hi " + name
 => Hi alice
 
-# branch
->> a = if 1 <= 100 then 1 else 100
-=> 1
-
-# recursive function (no side effect)
+# branch, recursive, and pure function
 >> sum(k) = if k < 1 then 0 else k + sum(k-1)
 => Function sum() defined
 >> sum(100)
@@ -132,25 +129,23 @@ Nope. We hope you **enjoy** it!
 
 # array
 >> nums = [1, 2, 3, 4]
-=> 1,2,3,4
+=> [1,2,3,4]
 >> exists = 3 in nums
 => true
 
 # for..in loop
 >> nums = [10, 20, 30]
-=> 10,20,30
+=> [10,20,30]
 >> sum = 0
 => 0
 >> for (n in nums) { sum = sum + n }
 => 60
 
 # scope
->> a = 100
-=> 100
->> { a = 10 }
-=> 10
+>> { a = 7; a = a + 10 }
+=> 17
 >> a
-=> 100
+Variable "a" is undefined
 
 # procedure (use ; for seperation, always return the last statement)
 >> circumference(d) := { PI = 3.14; PI * d; }
@@ -166,7 +161,7 @@ Nope. We hope you **enjoy** it!
 
 # dictionary
 >> info = { "type": "script", "version": 1.0 }
-=> [object Object]
+=> {"type":"script","version":1}
 >> info["type"]
 => script
 >> info["version"]
@@ -174,8 +169,11 @@ Nope. We hope you **enjoy** it!
 
 # JSON and NPL programming
 >> students = [{"name": "Alice", "age": 16}, {"name": "Bob", "age": 22}];
-=> [object Object],[object Object]
->> students[0]["age"]
-=> 16
+=> [{"name":"Alice","age":16},{"name":"Bob","age":22}]
+>> students[1]["age"]
+=> 22
 >> adults = llm "筛选出成年人" on students
+=> {"name":"Bob","age":22}
+>> adults["name"]
+=> Bob
 ```
