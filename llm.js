@@ -1,14 +1,14 @@
 const apiKeyInput = document.getElementById('apiKey');
 
 window.onload = () => {
-    const savedKey = localStorage.getItem('gemini_api_key');
+    const savedKey = localStorage.getItem('api_key');
     if (savedKey) {
         apiKeyInput.value = savedKey;
     }
 };
 
 apiKeyInput.addEventListener('change', () => {
-    localStorage.setItem('gemini_api_key', apiKeyInput.value);
+    localStorage.setItem('api_key', apiKeyInput.value);
 });
 
 async function llm_call(prompt) {
