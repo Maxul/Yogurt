@@ -22,15 +22,17 @@ Yes. *Tequila* is **turing-complete**.
 - precedence: ( )
 - raletional: <=>
 - argument separator: ,
+- procedure separator: ;
 - lexical scope delimiter: { }
 
 ### Is there any built-in constants or functions to use?
 
-Yes for sure. You can use *pi* and *e* and many other frequently used functions like *sin()*, *abs()*, *len()*, *substr()*, *concat()* and so forth.
+Yes, for sure. You can use *pi* and *e* and many other frequently used functions like *sin()*, *abs()*, *len()*, *substr()*, *concat()* and what have you.
 
 ### Does *Tequila* apply any type system?
 
 Not really. Tequila is designed for fast prototyping and interpreter practice.
+
 At this point, every literal in *Tequila* is a 64-bit double precision floating point numeric.
 
 ### Which kind of identifier name is valid?
@@ -69,36 +71,7 @@ We also provide C-style procedures.
 ```
 >> bar(x) := { a = 10; x = x + 10}
 ```
-Procedures are not like functions (which must be pure without any local variables). Procedures can store
-
-### Anything else?
-Nope. We hope you **enjoy** it!
-
-### History
-
-+ Beta 0.0
-    + Variables and functions are both first-class citizens.
-
-+ Beta 0.1
-    + Add control flow like *if*, *then* and *else*. Nesting is also supported.
-    + Recursion supported. **fib** works.
-
-+ Beta 0.2
-    + Add support for command line history. Integrated with **jQuery Terminal Emulator**.
-    + Add boolean expression and relational operators.
-    + Add support for compound operators such as "!=", "<=", etc.
-
-+ Beta 0.3
-    + Add support for memoization for heavy computation of recursion.
-    + Add support for lexical scope, which introduces the conception of local binding.
-    + Merge both variables and functions into the block scope.
-    + Multiple expressions after being evaluated only return the last one.
-
-+ Beta 0.4
-    + Add support for *for* and *while*.
-    + Add support for arrays, list, dict.
-    + Add support for pure functions and imperative procedures.
-    + Add support for LLM-based hybrid programming (combined with natural language).
+Procedures are not like functions (which must be pure without any local variables). 
 
 ### Guide Book
 
@@ -167,7 +140,7 @@ Variable "a" is undefined
 >> info["version"]
 => 1
 
-# JSON and NPL programming
+# JSON and NLP programming
 >> students = [{"name": "Alice", "age": 16}, {"name": "Bob", "age": 22}];
 => [{"name":"Alice","age":16},{"name":"Bob","age":22}]
 >> students[1]["age"]
@@ -177,3 +150,32 @@ Variable "a" is undefined
 >> adults["name"]
 => Bob
 ```
+
+### Anything else?
+Nope. We hope you **enjoy** it!
+
+### History
+
++ Beta 0.0
+    + Variables and functions are both first-class citizens.
+
++ Beta 0.1
+    + Add control flow like *if*, *then* and *else*. Nesting is also supported.
+    + Recursion supported. **fib** works.
+
++ Beta 0.2
+    + Add support for command line history. Integrated with **jQuery Terminal Emulator**.
+    + Add boolean expression and relational operators.
+    + Add support for compound operators such as "!=", "<=", etc.
+
++ Beta 0.3
+    + Add support for memoization for heavy computation of recursion.
+    + Add support for lexical scope, which introduces the conception of local binding.
+    + Merge both variables and functions into the block scope.
+    + Multiple expressions after being evaluated only return the last one.
+
++ Beta 0.4
+    + Add support for *for* and *while*.
+    + Add support for arrays, list, dict.
+    + Add support for pure functions and imperative procedures.
+    + Add support for LLM-based hybrid programming (combined with natural language).
