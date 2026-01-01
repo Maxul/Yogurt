@@ -204,7 +204,7 @@ async function tequila_evaluate(parse_tree) {
             var res = {};
             for (var i = 0; i < node.pairs.length; ++i) {
                 var pair = node.pairs[i];
-                var keyName = (pair.key.node === "id" || pair.key.node === "number" || pair.key.node === "string")
+                var keyName = (pair.key.node === "number" || pair.key.node === "string")
                     ? pair.key.value
                     : await parseTree(pair.key);
                 res[keyName] = await parseTree(pair.val);

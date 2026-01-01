@@ -77,11 +77,11 @@ const testCases = [
         code: 'user = {"name": "Alice", "score": 95}; user["name"]',
         expected: "Alice"
     },
-    // {
-    //     name: "字典动态键 (表达式解析)",
-    //     code: 'k = "age"; person = {k: 20}; person["age"]',
-    //     expected: "20"
-    // },
+    {
+        name: "dict key as expr",
+        code: 'k = "age"; person = {k: 20}; person["age"]',
+        expected: "20"
+    },
     {
         name: "for loop",
         code: "total = 0; for (i = 1; i <= 5; i = i + 1) { total = total + i }; total",
