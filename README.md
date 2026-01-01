@@ -9,9 +9,9 @@
 ```
 > Drinking much Tequila is unhealthy for your body.
 
-### Does it support branches or loops like "*if*", "*for*", etc?
+### Does it support branches and loops like "*if*", "*for*", etc?
 
-Yes. *Tequila* is **turing-complete**.
+Yes. *Tequila* is completely **turing-complete**.
 
 ### What operators can be used for calculation?
 
@@ -147,8 +147,8 @@ Variable "a" is undefined
 => 22
 >> adults = llm "筛选出成年人" on students
 => {"name":"Bob","age":22}
->> adults["name"]
-=> Bob
+>> adults["age"]
+=> 22
 ```
 
 ### Anything else?
