@@ -107,11 +107,11 @@ const testCases = [
         code: "fib(n) = if n < 2 then n else fib(n-1) + fib(n-2); fib(6)",
         expected: "8"
     },
-    // {
-    //     name: "closure",
-    //     code: "f(x) = { g(y) = x + y }; f(5)(10)",
-    //     expected: "15"
-    // },
+    {
+        name: "closure",
+        code: "f(x) = { g(y) = x + y }; f(5)(10)",
+        expected: "15"
+    },
 
     {
         name: "logical 1",

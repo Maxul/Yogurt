@@ -6,8 +6,9 @@ const Scope = {
 
     env() { return this.env_stack[this.depth]; },
 
-    push() {
-        const new_scope = Object.create(this.env_stack[this.depth]);
+    push(specifiedParent) {
+        const parent = specifiedParent || this.env_stack[this.depth];
+        const new_scope = Object.create(parent);
         this.env_stack.push(new_scope);
         this.depth++;
     },

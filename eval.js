@@ -6,8 +6,8 @@
 async function tequila_evaluate(parse_tree) {
     // take the place of LHS with RHS when only RHS exists
     const ops = {
-        "+": (a, b) => a + b,
-        "-": (a, b) => a - b,
+        "+": (a, b) => (b === undefined) ? a : a + b, // for unary like "+1"
+        "-": (a, b) => (b === undefined) ? -a : a - b, // for unary like "-1"
         "*": (a, b) => a * b,
         "/": (a, b) => a / b,
         ">": (a, b) => a > b,
@@ -92,20 +92,17 @@ async function tequila_evaluate(parse_tree) {
                 // clear previous definition
                 Memo.clearMemoRow(root.name);
                 // push a definition bound to a prototype into environment
-                var paramNames = [];
-                for (var i = 0; i < root.args.length; i++) {
-                    paramNames.push(root.args[i].value);
-                }
-
+                var paramNames = root.args.map(arg => arg.value);
                 Scope.env()[root.name] = {
                     type: "func",
                     params: paramNames,
-                    body: root.value
+                    body: root.value,
+                    closure_env: Scope.env() // closure
                 };
-                return "Function " + root.name + "() defined";
+                return "Function " + root.name + "() is defined";
             case "proc_def":
                 Scope.env()[root.name] = { type: "proc", params: root.params, body: root.body };
-                return "Procedure " + root.name + "() defined";
+                return "Procedure " + root.name + "() is defined";
             case "call":
                 // is it a function provided by us?
                 if ("function" === typeof native_functions[root.name]) {
@@ -129,13 +126,13 @@ async function tequila_evaluate(parse_tree) {
                     argValues.push(await parseTree(root.args[i]));
                 }
 
-                Scope.push();
+                Scope.push(funcDef.closure_env);
                 for (var i = 0; i < funcDef.params.length; ++i) {
                     var paramName = funcDef.params[i];
                     Scope.env()[paramName] = argValues[i];
                 }
                 // accelerate with memoization
-                var result = Memo.getMemoValue(root.name, root.args);
+                var result = Memo.getMemoValue(root.name, argValues);
                 if ("undefined" !== typeof result)
                     return result;
                 result = await parseTree(funcDef.body);
@@ -231,12 +228,15 @@ async function tequila_evaluate(parse_tree) {
 
             default:
                 if (ops[root.node]) {
-                    const left = root.lhs ? await parseTree(root.lhs) : undefined;
-                    const right = await parseTree(root.rhs);
-                    if (root.node === "+") {
-                        return left + right;
+                    const right = await parseTree(root.rhs); // all ops have rhs
+                    if (root.lhs !== undefined && root.lhs !== null) {
+                        const left = await parseTree(root.lhs); // binary
+                        // for numerics and strings
+                        if (root.node === "+") return left + right;
+                        return ops[root.node](left, right);
+                    } else {
+                        return ops[root.node](right); // unary
                     }
-                    return ops[root.node](left, right);
                 } else {
                     return "nil";       // unhandled exception
                 }
