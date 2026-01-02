@@ -41,3 +41,35 @@ async function llm_call(prompt) {
     // console.log(JSON.stringify(result));
     return result;
 }
+
+async function llm_do(intent) {
+    const url = "https://api.groq.com/openai/v1/chat/completions";
+    const model = "groq/compound";
+    const apiKey = apiKeyInput.value;
+    if (!apiKey) {
+        alert("API Key is missing! Please input it in the header.");
+    }
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: [{ role: "user", content: intent }],
+            temperature: 1,
+            max_completion_tokens: 1024,
+            top_p: 1,
+            stream: false,
+            stop: null,
+            compound_custom: {
+            "tools": {"enabled_tools": ["web_search", "code_interpreter", "visit_website"]}
+        }}),
+    });
+    const data = await response.json();
+    result = data.choices[0].message.content;
+    console.log(JSON.stringify(result));
+    return result;
+}

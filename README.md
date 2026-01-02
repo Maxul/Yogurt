@@ -22,7 +22,7 @@ Yes. *Tequila* is completely **turing-complete**.
 - precedence: ( )
 - raletional: <=>
 - argument separator: ,
-- procedure separator: ;
+- statement separator: ;
 - lexical scope delimiter: { }
 
 ### Is there any built-in constants or functions to use?
@@ -141,7 +141,7 @@ Variable "a" is undefined
 => 1
 
 # JSON and NLP programming
->> students = [{"name": "Alice", "age": 16}, {"name": "Bob", "age": 22}];
+>> students = [{"name": "Alice", "age": 16}, {"name": "Bob", "age": 22}]
 => [{"name":"Alice","age":16},{"name":"Bob","age":22}]
 >> students[1]["age"]
 => 22
@@ -149,6 +149,20 @@ Variable "a" is undefined
 => {"name":"Bob","age":22}
 >> adults["age"]
 => 22
+
+# use LLM for program synthesis
+# robot current states
+>> robot_pos = { "x": 0, "y": 0 }
+>> obstacles = [ { "x": 5, "y": 5, "type": "glass"} ]
+>> llm_do "
+    计算移动路径，避开所有 glass 类型的障碍物。
+    如果是纸质障碍物，可以直接推开。
+    更新 robot_pos 的坐标到 (10, 10)。
+" on (robot_pos, obstacles)
+
+# print new position
+>> robot_pos
+
 ```
 
 ### Anything else?
