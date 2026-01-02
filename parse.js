@@ -4,18 +4,18 @@
  * parser: construct a parse tree according to token list
  */
 function tequila_parse(token_list) {
-    var tokTable = {};      // ready to get referenced for all possible symbols
+    const tokTable = {};      // ready to get referenced for all possible symbols
 
     function getNextToken() { return token_list.shift(); }
 
     // duplicate one from token list, deep cloning and register callbacks
     function dupCurToken() {
-        var tok = token_list[0];
-
+        const tok = token_list[0];
         if (!tokTable[tok.node]) {
             throw "Unrecognised token \"" + tok.node + "\"";
         }
-        var newTok = Object.create(tokTable[tok.node]); // nud, lbp, led
+
+        const newTok = Object.create(tokTable[tok.node]); // nud, lbp, led
         newTok.node = tok.node;
         newTok.value = tok.value;
         return newTok;
@@ -27,20 +27,22 @@ function tequila_parse(token_list) {
      *
      * @param rbp   right binding power
      */
-    function expr(rbp) {
-        var tok = dupCurToken();
+    function expression(rbp) {
+        let tok = dupCurToken();
 
-        if (!tok.nud)
+        if (!tok.nud) {
             throw "Unexpected token: " + tok.node;
+        }
 
         getNextToken(); // eat id/number/prefix
 
-        var lhs = tok.nud(tok); // mostly simply return itself
+        let lhs = tok.nud(tok); // mostly simply return itself
         while (rbp < dupCurToken().lbp) {
             tok = dupCurToken();
             getNextToken(); // eat infix
-            if (!tok.led)
+            if (!tok.led) {
                 throw "Unexpected token: " + tok.node;
+            }
             lhs = tok.led(lhs);
         }
         return lhs;
@@ -54,7 +56,7 @@ function tequila_parse(token_list) {
      */
     function makeSymbol(id, nud, lbp, led) {
         // register symbol table
-        var tok = tokTable[id] || {};
+        const tok = tokTable[id] || {};
         tokTable[id] = {
             nud: tok.nud || nud,
             lbp: tok.lbp || lbp,
@@ -62,43 +64,49 @@ function tequila_parse(token_list) {
         };
     }
 
-    makeSymbol(",");
-    makeSymbol(";");
-    makeSymbol(":");
+    makeSymbol("number", function (n) { return n; });
+    makeSymbol("string", function (n) { return n; });
+
+    makeSymbol(","); // argument separator
+    makeSymbol(";"); // statement separator
+    makeSymbol(":"); // key-value mapping
 
     // for array
     makeSymbol("[", function () {
-        var elems = [];
+        const elems = [];
         if (token_list[0].node !== "]") {
             while (true) {
-                elems.push(expr(0));
+                elems.push(expression(0));
                 if (token_list[0].node !== ",") {
                     break;
                 }
                 getNextToken(); // eat ","
             }
         }
-        if (token_list[0].node !== "]")
+        if (token_list[0].node !== "]") {
             throw "Expected closing bracket ']'";
+        }
         getNextToken(); // eat "]"
         return { node: "array", elements: elems };
     });
     makeSymbol("]");
 
     makeSymbol("for", function () {
-        if ("(" !== token_list[0].node)
+        if ("(" !== token_list[0].node) {
             throw "Expected '(' after for";
+        }
         getNextToken(); // eat "("
 
-        var init = expr(0);
+        const init = expression(0);
 
         // case A: for n in nums
         if (init.node === "in") {
-            if (")" !== token_list[0].node)
+            if (")" !== token_list[0].node) {
                 throw "Expected ')' after for-in loop";
+            }
             getNextToken(); // eat ")"
 
-            var body = expr(0);
+            const body = expression(0);
 
             return {
                 node: "loop_for_in",
@@ -109,96 +117,104 @@ function tequila_parse(token_list) {
         }
 
         // case B: for (i = 0; i < N; i = i + 1)
-        if (";" !== token_list[0].node)
+        if (";" !== token_list[0].node) {
             throw "Expected ';' or 'in' in for loop";
+        }
         getNextToken(); // eat first ";"
 
-        var cond = expr(0); // 解析条件 (i < 10)
+        const cond = expression(0);
 
-        if (";" !== token_list[0].node)
+        if (";" !== token_list[0].node) {
             throw "Expected ';' after condition";
+        }
         getNextToken(); // eat second ";"
 
-        var step = expr(0);
+        const step = expression(0);
 
-        if (")" !== token_list[0].node)
+        if (")" !== token_list[0].node) {
             throw "Expected ')' after step";
+        }
         getNextToken(); // eat ")"
 
-        var body = expr(0);
+        const body = expression(0);
 
         return { node: "loop_for", init: init, cond: cond, step: step, body: body };
     });
 
     makeSymbol("while", function () {
-        var cond = expr(0);
-        var body = expr(0);
+        const cond = expression(0);
+        const body = expression(0);
         return { node: "loop_while", cond: cond, body: body };
     });
 
     makeSymbol("if", function () {
-        var cond = expr(0);
-        if ("then" !== token_list[0].node)
+        const cond = expression(0);
+        if ("then" !== token_list[0].node) {
             throw "Expected 'then' clause";
+        }
         getNextToken(); // eat "then"
 
-        var conseq = expr(0);
-        if ("else" !== token_list[0].node)
-            /*throw "Expected 'else' clause";*/
+        const conseq = expression(0);
+        if ("else" !== token_list[0].node) {
             return { "node": "branch", "cond": cond, "conseq": conseq };
+        }
         getNextToken(); // eat "else"
 
-        var alt = expr(0);
+        const alt = expression(0);
         return { "node": "branch", "cond": cond, "conseq": conseq, "alt": alt };
     });
     makeSymbol("then");
     makeSymbol("else");
 
     makeSymbol("(", function () {
-        var e = expr(0);
+        const e = expression(0);
 
         // check if it is a tuple
         if (token_list[0].node === ",") {
-            var elems = [e];
+            const elems = [e];
             while (token_list[0].node === ",") {
                 getNextToken(); // eat ","
-                if (token_list[0].node === ")") break;
-                elems.push(expr(0));
+                if (token_list[0].node === ")") {
+                    break;
+                }
+                elems.push(expression(0));
             }
-            if (")" !== token_list[0].node)
+            if (")" !== token_list[0].node) {
                 throw "Expected closing parenthesis ')' for tuple";
+            }
             getNextToken(); // eat ")"
             return { node: "tuple", elements: elems };
         }
 
-        if (")" !== token_list[0].node)
+        if (")" !== token_list[0].node) {
             throw "Expected closing parenthesis ')'";
+        }
         getNextToken(); // eat ")"
         return e;
     });
     makeSymbol(")");
 
     makeSymbol('{', function () {
-        // 1. handle empty dict {} 
+        // empty dict {} 
         if ("}" === token_list[0].node) {
             getNextToken();
             return { "node": "dict", "pairs": [] };
         }
 
-        var isDict = false;
+        let isDict = false;
         if (token_list.length > 1 && token_list[1].node === ":") {
             isDict = true;
         }
 
         if (isDict) {
-            var pairs = [];
+            const pairs = [];
             do {
-                var key = expr(0);
+                const key = expression(0);
                 if (":" !== token_list[0].node)
                     throw "Expected ':' in dict definition";
                 getNextToken(); // eat ":""
 
-                var val = expr(0);
+                const val = expression(0);
                 pairs.push({ key: key, val: val });
 
                 if ("," === token_list[0].node) {
@@ -208,74 +224,89 @@ function tequila_parse(token_list) {
                 }
             } while ("}" !== token_list[0].node);
 
-            if ("}" !== token_list[0].node) throw "Expected '}'";
+            if ("}" !== token_list[0].node) {
+                throw "Expected '}'";
+            }
             getNextToken();
             return { node: "dict", pairs: pairs };
         }
 
-        var statements = [];
-
+        const statements = [];
         while ("}" !== token_list[0].node) {
             if (";" === token_list[0].node) {
                 getNextToken();
                 continue;
             }
-
-            statements.push(expr(0));
+            statements.push(expression(0));
         }
         getNextToken();     // eat "}"
         return { node: "block", stmts: statements };
     });
     makeSymbol('}');
-    makeSymbol("number", function (n) { return n; });
-    makeSymbol("string", function (n) { return n; });
+
     makeSymbol("id", function (name) {
-        if ("(" !== token_list[0].node) // variable reference
+        // variable reference
+        if ("(" !== token_list[0].node) {
             return name;
+        }
 
-        var args = [];                  // function call
-
-        if (")" === token_list[1].node)
+        // function call
+        const args = [];
+        if (")" === token_list[1].node) {
             getNextToken(); // eat ")" since no args
-        else {
+        } else {
             do {
                 getNextToken(); // eat "(" and ","
-                args.push(expr(0));
+                args.push(expression(0));
             } while ("," === token_list[0].node);
-            if (")" !== token_list[0].node)
+            if (")" !== token_list[0].node) {
                 throw "Expected closing parenthesis ')'";
+            }
         }
         getNextToken(); // move to new token ready to go
         return { node: "call", args: args, name: name.value };
     });
-    makeSymbol("on");
+
     makeSymbol("llm", function () {
-        let prompt = getNextToken().value;
-        let context = [];
+        // grammar: llm "prompt" on context
+        const prompt = getNextToken().value;
+        const context = [];
         if (token_list[0].node === "on") {
             getNextToken(); // eat "on"
-            context = expr(0);
+            context = expression(0);
         }
         return { node: "llm_call", prompt: prompt, context: context };
     });
+    makeSymbol("llm_do", function () {
+        // grammar: llm_do "intent" on context
+        const intent = getNextToken().value;
+        const context = [];
+        if (token_list[0].node === "on") {
+            getNextToken(); // eat "on"
+            contextVars = expression(0);
+        }
+        return { node: "llm_synth", intent: intent, context: context };
+    });
+    makeSymbol("on");
+
     makeSymbol("EOF");
 
     // wrappers
     function prefix(id, rbp) {
         makeSymbol(id, function () {
-            return { node: id, rhs: expr(rbp) };
+            return { node: id, rhs: expression(rbp) };
         });
     }
     function infix(id, lbp, rbp, led) {
         rbp = rbp || lbp;
         makeSymbol(id, null, lbp, led || function (lhs) {
-            return { node: id, lhs: lhs, rhs: expr(rbp) };
+            return { node: id, lhs: lhs, rhs: expression(rbp) };
         });
     }
 
     // install standard operators and set precedence, 1 is the lowest
     infix("[", 8, 8, function (lhs) {
-        var index = expr(0);
+        const index = expression(0);
         if ("]" !== token_list[0].node)
             throw "Expected ']'";
         getNextToken(); // eat "]"
@@ -306,49 +337,49 @@ function tequila_parse(token_list) {
     infix("=", 1, 2, function (lhs) {
         // assignment to identifier
         if ("id" === lhs.node) {
-            return { node: "assign", name: lhs.value, value: expr(0) };
+            return { node: "assign", name: lhs.value, value: expression(0) };
         }
         if ("call" === lhs.node) {
             // check whether each arg is valid
-            for (var i = 0; i < lhs.args.length; ++i)
-                if ("id" !== lhs.args[i].node)
+            for (let i = 0; i < lhs.args.length; ++i) {
+                if ("id" !== lhs.args[i].node) {
                     throw "Invalid argument name";
-            return { node: "func_def", name: lhs.name, args: lhs.args, value: expr(0) };
+                }
+            }
+            return { node: "func_def", name: lhs.name, args: lhs.args, value: expression(0) };
         }
-        throw "Invalid lvalue.";
+        throw "Invalid lvalue";
     });
 
     infix(":=", 1, 2, function (lhs) {
-        var name;
-        var params = [];
+        let name;
+        const params = [];
 
         if (lhs.node === "id") {        // without args
             name = lhs.value;
-        }
-        else if (lhs.node === "call") { // with args
+        } else if (lhs.node === "call") { // with args
             name = lhs.name;
-            for (var i = 0; i < lhs.args.length; i++) {
+            for (let i = 0; i < lhs.args.length; i++) {
                 if (lhs.args[i].node !== "id")
                     throw "Parameter name must be an identifier";
                 params.push(lhs.args[i].value);
             }
         } else {
-            throw "Invalid lvalue for procedure definition.";
+            throw "Invalid lvalue for procedure definition";
         }
-        var body = expr(0);
+        const body = expression(0);
         return { node: "proc_def", name: name, params: params, body: body };
     });
-    // console.log(JSON.stringify(token_list));
-    var parse_tree = [];
 
+    const parse_tree = [];
     while ("EOF" !== token_list[0].node) {
         if (";" === token_list[0].node) {
             getNextToken();
             continue;
         }
-        parse_tree.push(expr(0));
+        parse_tree.push(expression(0));
     }
-    // console.log(parse_tree.length);
+    // console.log(JSON.stringify(token_list));
     // console.log(JSON.stringify(parse_tree));
     return parse_tree;
 }

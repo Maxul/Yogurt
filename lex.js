@@ -18,7 +18,9 @@ function tequila_lex(input) {
     const advance = () => ch = input[++index];
 
     const getToken = () => {
-        if (index >= input.length) return null;
+        if (index >= input.length) {
+            return null;
+        }
 
         ch = input[index]; // getChar()
         while (index < input.length) {
@@ -33,13 +35,17 @@ function tequila_lex(input) {
                 break;
             }
         }
-        if (index >= input.length) return null;
+        if (index >= input.length) {
+            return null;
+        }
 
         if (isOp(ch)) {
             let ret = ch;
             const t = ch;
             advance();
-            if (brackets.includes(t)) return { node: ret };
+            if (brackets.includes(t)) {
+                return { node: ret };
+            }
             // compound operator
             while (index < input.length && suffix_ops.includes(input[index])) {
                 ret += input[index];
@@ -62,16 +68,22 @@ function tequila_lex(input) {
 
         if (isDigit(ch)) {
             let numStr = ch;
-            while (isDigit(advance())) numStr += ch;
+            while (isDigit(advance())) {
+                numStr += ch;
+            }
             const num = parseFloat(numStr);
-            if (!isFinite(num)) throw "Number overflow/underflow";
+            if (!isFinite(num)) {
+                throw "Number overflow/underflow";
+            }
             return { node: "number", value: num };
         }
 
         // can be either variables, functions, or procedures
         if (isId(ch)) {
             let id = ch;
-            while (isId(advance())) id += ch;
+            while (isId(advance())) {
+                id += ch;
+            }
             return keywords.includes(id) ? { node: id } : { node: "id", value: id };
         }
 
@@ -79,7 +91,9 @@ function tequila_lex(input) {
     };
 
     let token;
-    while (token = getToken()) token_list.push(token);
+    while (token = getToken()) {
+        token_list.push(token);
+    }
     token_list.push({ node: "EOF" }); // no more tokens
     // console.log(JSON.stringify(token_list));
     return token_list;
