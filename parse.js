@@ -270,7 +270,7 @@ function tequila_parse(token_list) {
     makeSymbol("llm", function () {
         // grammar: llm "prompt" on context
         const prompt = getNextToken().value;
-        const context = [];
+        let context = [];
         if (token_list[0].node === "on") {
             getNextToken(); // eat "on"
             context = expression(0);
@@ -280,10 +280,10 @@ function tequila_parse(token_list) {
     makeSymbol("llm_do", function () {
         // grammar: llm_do "intent" on context
         const intent = getNextToken().value;
-        const context = [];
+        let context = [];
         if (token_list[0].node === "on") {
             getNextToken(); // eat "on"
-            contextVars = expression(0);
+            context = expression(0);
         }
         return { node: "llm_synth", intent: intent, context: context };
     });
